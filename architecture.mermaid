@@ -1,0 +1,77 @@
+%% agent-parser — архитектурная схема
+%% Источник истины: docs/ARCHITECTURE.md §3–§8.
+%% Обновляется при каждом изменении границ слоёв или их компонентов.
+%% Рендер: GitHub-preview, GitLab, mermaid.live, IDE с Mermaid plugin.
+
+flowchart TB
+    classDef workflow fill:#e0f0f5,stroke:#2c7a9e,color:#000,stroke-width:1.5px
+    classDef agent fill:#fef3c7,stroke:#d97706,color:#000,stroke-width:1.5px
+    classDef storage fill:#dcefdc,stroke:#2d7a2d,color:#000,stroke-width:1.5px
+    classDef safety fill:#ffe4e4,stroke:#b91c1c,color:#000,stroke-dasharray:5 3,stroke-width:2px
+    classDef external fill:#f3f4f6,stroke:#6b7280,color:#000
+
+    Trigger([Batch trigger<br/>or Slash command]):::external
+
+    subgraph L1["Layer 1 · Compliance &amp; Detection (workflow)"]
+        direction TB
+        Robots["robots.py<br/>is_allowed(url)"]
+        SourcesYAML[("config/sources.yaml<br/>allow-list")]
+        Robots --> SourcesYAML
+    end
+
+    subgraph L2["Layer 2 · Discovery (workflow)"]
+        direction TB
+        Adapter["SourceAdapter<br/>list_urls / parse_id"]
+    end
+
+    subgraph L3["Layer 3 · Extraction (workflow)"]
+        direction TB
+        Firecrawl["firecrawl_scrape<br/>JSON-mode + schema"]
+        Validate["Pydantic<br/>model_validate"]
+        Firecrawl --> Validate
+    end
+
+    subgraph L4["Layer 4 · Storage &amp; Audit (SQLite)"]
+        direction LR
+        RawContent[("raw_content<br/>append-only audit")]
+        Canonical[("canonical_records<br/>last valid by source_id")]
+        ChangeHistory[("change_history<br/>field-level diffs")]
+        Failed[("validation_failed<br/>queue for agent")]
+    end
+
+    subgraph L5["Layer 5 · Agent (run-time, narrow)"]
+        direction LR
+        Investigate["/investigate-failed/<br/>read-only + cost-cap scrape"]
+        Onboard["/onboard-source/<br/>design-time only"]
+        Query["/query/<br/>NL → SQL read-only"]
+    end
+
+    subgraph L6["Layer 6 · Safety perimeter (cross-cutting)"]
+        direction LR
+        Sanitize["sanitize.py<br/>NFKC + zero-width strip<br/>+ role-prefix neutralize"]
+        Classifier["classifier.py<br/>guard-LLM SAFE/UNSAFE"]
+        CostGate["cost.py<br/>CostGate + circuit breaker"]
+        Trace["trace.py<br/>JSONL spans"]
+    end
+
+    Trigger --> L1
+    L1 -- "domain allowed,<br/>robots OK" --> L2
+    L1 -. "denied" .-> Stop1([RuntimeError]):::external
+
+    L2 -- "URLs stream" --> L3
+    L3 -- "raw payload" --> RawContent
+    L3 -- "validated" --> Canonical
+    L3 -. "ValidationError" .-> Failed
+    Canonical -- "diff per field" --> ChangeHistory
+
+    Failed --> Investigate
+    Canonical -- "read-only" --> Query
+
+    L6 -. "wraps" .-> L2
+    L6 -. "wraps" .-> L3
+    L6 -. "wraps" .-> L5
+
+    class L1,L2,L3 workflow
+    class L4 storage
+    class L5 agent
+    class L6 safety
