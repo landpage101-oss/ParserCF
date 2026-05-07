@@ -11,7 +11,7 @@ repos:
       - id: mypy
         args: [--strict]
         files: ^src/
-        additional_dependencies: [pydantic>=2.7, types-PyYAML]
+        additional_dependencies: [pydantic>=2.7, types-PyYAML, anthropic>=0.34]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:

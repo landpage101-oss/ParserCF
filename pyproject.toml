@@ -52,6 +52,7 @@ ignore = [
   "EM101",    # exception must not use string literal - validators used verbatim from spec
   "EM102",    # exception must not use f-string literal - same reason
   "TRY003",   # long exception message outside exception class - same reason
+  "ANN401",   # dynamically typed Any in **kwargs - correct for generic span attrs
 ]
 
 [tool.ruff.lint.per-file-ignores]
