@@ -101,7 +101,9 @@ from pydantic import BaseModel, HttpUrl, Field, field_validator
 from datetime import datetime
 
 class Article(BaseModel):
+    source: str = Field(min_length=1, max_length=64)         # имя адаптера
     source_url: HttpUrl
+    source_id: str = Field(min_length=1, max_length=256)     # канонический ID на источнике
     title: str = Field(min_length=1, max_length=500)
     author: str | None = None
     published_at: datetime | None = None
@@ -122,7 +124,9 @@ class Article(BaseModel):
 
 # src/schemas/docs.py
 class DocsPage(BaseModel):
+    source: str = Field(min_length=1, max_length=64)
     source_url: HttpUrl
+    source_id: str = Field(min_length=1, max_length=256)
     title: str = Field(min_length=1)
     section_path: list[str] = Field(default_factory=list)
     body_md: str = Field(min_length=10)
@@ -134,7 +138,9 @@ class DocsPage(BaseModel):
 from decimal import Decimal
 
 class Product(BaseModel):
+    source: str = Field(min_length=1, max_length=64)
     source_url: HttpUrl
+    source_id: str = Field(min_length=1, max_length=256)
     name: str = Field(min_length=1, max_length=300)
     sku: str | None = None
     price: Decimal | None = None       # None допустим, но логируется
@@ -152,7 +158,9 @@ class Product(BaseModel):
 
 # src/schemas/reference.py
 class ReferenceEntry(BaseModel):
+    source: str = Field(min_length=1, max_length=64)
     source_url: HttpUrl
+    source_id: str = Field(min_length=1, max_length=256)
     term: str = Field(min_length=1, max_length=300)
     definition: str = Field(min_length=10)
     examples: list[str] = Field(default_factory=list)
@@ -398,6 +406,8 @@ Captured-fixtures проверяются soft-style — потому что ст
 }
 ```
 
+Замечание для имплементатора `extract_from_local`. Тест опирается на то, что html→md-конвертер сохраняет `<p>` как абзац с переносом строки (стандартное поведение `markdownify`). Если кастомный конвертер этого не делает (например, объединяет соседние `<p>` без `\n\n`), regex `ROLE_PREFIXES` не сработает и eval упадёт. Это ожидаемое поведение fixture'а: он одновременно тестирует и sanitize-слой, и инвариант на конвертер.
+
 Этот fixture — тест двух вещей одновременно: (а) sanitize-слой обнаружил инъекцию и нейтрализовал префикс; (б) реальное содержание (определение термина) дошло до Pydantic корректно. Если sanitize слишком агрессивный и затёр определение — eval упадёт.
 
 Остальные 16 фикстур строятся по тому же принципу: один input, один expected, один edge-case. Полный комплект — отдельная PR-задача в репозитории; шаблоны 6.1–6.4 показывают паттерн.
@@ -537,7 +547,14 @@ from src.safety.sanitize import sanitize
 
 # В CI extract_article вызывает не реальный Firecrawl, а локальный
 # конвертер html→markdown (в src/extract.py есть ветка для тестов).
-from src.extract import extract_from_local
+from src.extract import extract_from_local  # контракт — agent_parser_secure_v2.md §5.4
+
+
+def _resolve_base_field(rule_key: str) -> str:
+    for suffix in ("_min_length", "_must_contain", "_min"):
+        if rule_key.endswith(suffix):
+            return rule_key.removesuffix(suffix)
+    raise ValueError(f"unknown soft-rule suffix: {rule_key}")
 
 
 def _check_soft(value: object, rule_key: str, rule_value: object) -> None:
@@ -589,11 +606,8 @@ def test_fixture(fixture_pair):
     dump = instance.model_dump(mode="json")
 
     for k, v in expected_fields.items():
-        if any(k.endswith(suf) for suf in
-               ("_min_length", "_must_contain", "_min")):
-            base_field = k.rsplit("_", 2)[0] if k.endswith("_min_length") \
-                else k.rsplit("_", 2)[0] if k.endswith("_must_contain") \
-                else k.rsplit("_", 1)[0]
+        if any(k.endswith(suf) for suf in ("_min_length", "_must_contain", "_min")):
+            base_field = _resolve_base_field(k)
             _check_soft(dump.get(base_field), k, v)
         else:
             assert str(dump.get(k)) == str(v), \
@@ -607,6 +621,29 @@ def test_fixture(fixture_pair):
 ```
 
 `extract_from_local` — отдельная ветка в `src/extract.py`, которая принимает уже готовый markdown/html и проходит ту же конверсию, что Firecrawl делает на своей стороне. Эта функция нужна только для тестов; в production в `extract_article` вызывается реальный Firecrawl. Разделение нужно, чтобы CI не зависел от внешнего API и не платил за прогон.
+
+### 8.1. Unit-тесты для `_resolve_base_field`
+
+```python
+# tests/eval/test_resolve_base_field.py
+import pytest
+from tests.eval.test_eval_suite import _resolve_base_field
+
+
+@pytest.mark.parametrize("key,expected", [
+    ("body_md_min_length", "body_md"),
+    ("definition_must_contain", "definition"),
+    ("code_block_count_min", "code_block_count"),
+    ("title_must_contain", "title"),
+])
+def test_resolve_base_field(key: str, expected: str) -> None:
+    assert _resolve_base_field(key) == expected
+
+
+def test_resolve_base_field_rejects_unknown_suffix() -> None:
+    with pytest.raises(ValueError, match="unknown soft-rule suffix"):
+        _resolve_base_field("plain_field")
+```
 
 ---
 

@@ -129,7 +129,7 @@ class SourceAdapter(Protocol):
         """Канонический ID записи на этом источнике."""
 ```
 
-Имплементация для конкретного источника может использовать `firecrawl_map` для статичных сайтов, `firecrawl_crawl` с обязательным `limit` для рекурсивного обхода, или собственный обход RSS/sitemap.
+Имплементация для конкретного источника может использовать `firecrawl_map` для статичных сайтов, `firecrawl_crawl` с обязательным `limit` для рекурсивного обхода, или собственный обход RSS/sitemap. См. §10.3 для пояснения, почему `firecrawl_crawl` через Python-импорт допустим, а через MCP-канал — нет.
 
 ### 4.2. Design-time режим (агентский онбординг)
 
@@ -145,26 +145,34 @@ class SourceAdapter(Protocol):
 
 Для каждого типа сущности — Pydantic-модель с обязательными полями и валидаторами:
 
+> **Источник истины:** полный реестр Pydantic-схем для всех четырёх типов сущностей
+> (`Article`, `DocsPage`, `Product`, `ReferenceEntry`) — в `evals_and_ci.md` §3.
+> Этот документ показывает только пример для `Article`, чтобы не дублировать.
+
 ```python
 # src/schemas/article.py
 from pydantic import BaseModel, HttpUrl, Field, field_validator
 from datetime import datetime
 
 class Article(BaseModel):
-    source_id: str = Field(min_length=1)
-    url: HttpUrl
+    source: str = Field(min_length=1, max_length=64)         # имя адаптера
+    source_url: HttpUrl
+    source_id: str = Field(min_length=1, max_length=256)     # канонический ID на источнике
     title: str = Field(min_length=1, max_length=500)
-    published_at: datetime | None = None
     author: str | None = None
+    published_at: datetime | None = None
     body_md: str = Field(min_length=10)
     language: str = Field(pattern=r"^[a-z]{2}$")
 
     @field_validator("body_md")
     @classmethod
-    def must_not_be_placeholder(cls, v: str) -> str:
-        bad = {"lorem ipsum", "page not found", "access denied"}
-        if any(b in v.lower() for b in bad):
-            raise ValueError("body looks like placeholder/error page")
+    def reject_placeholder(cls, v: str) -> str:
+        markers = {"lorem ipsum", "page not found", "access denied",
+                   "404", "403 forbidden", "are you a robot"}
+        low = v.lower()
+        for m in markers:
+            if m in low:
+                raise ValueError(f"body looks like placeholder/error: '{m}'")
         return v
 ```
 
@@ -178,16 +186,18 @@ from src.schemas.article import Article
 
 fc = Firecrawl(api_key=os.environ["FIRECRAWL_API_KEY"])
 
-def extract_article(url: str) -> Article:
+def extract_article(url: str) -> tuple[dict, Article]:
     raw = fc.scrape(
         url,
         formats=[{"type": "json", "schema": Article.model_json_schema()}],
         only_main_content=True,
         timeout=30000,
     )
-    if not raw or not getattr(raw, "json", None):
+    raw_json = getattr(raw, "json", None)
+    if raw_json is None:
         raise ValueError(f"empty extraction for {url}")
-    return Article.model_validate(raw.json)
+    article = Article.model_validate(raw_json)
+    return raw_json, article
 ```
 
 Да, JSON-режим Firecrawl стоит дороже базового scrape по их прайсу — но это компенсируется тем, что не нужен отдельный LLM-парсер на нашей стороне и резко падает доля грязных записей в БД. Где для конкретной задачи это экономически невыгодно — оставляйте `formats=["markdown"]` и парсите markdown в Pydantic-модель собственным валидатором, но никогда не сохраняйте «как есть».
@@ -195,6 +205,43 @@ def extract_article(url: str) -> Article:
 ### 5.3. Что делать с невалидным результатом
 
 `ValidationError` от Pydantic не превращается в исключение, обрывающее batch. Вместо этого: запись попадает в `validation_failed` с полным raw-payload и сообщением об ошибке, batch продолжается, агент-следователь (слой 5) разбирает очередь отдельной командой.
+
+### 5.4. Контракт extract_from_local (test double)
+
+```python
+# src/extract.py (фрагмент)
+
+from typing import Literal
+
+PageType = Literal["article", "docs", "product", "reference"]
+
+def extract_from_local(
+    raw: str,
+    page_type: PageType,
+    *,
+    fallback_url: str = "https://example.invalid/synthetic",
+) -> dict:
+    """Локальная имитация extraction-слоя для unit/eval-тестов.
+
+    Принимает уже скачанный markdown или HTML (как пришёл бы от Firecrawl
+    в формате markdown / только-main-content). НЕ делает сетевых вызовов.
+
+    Логика:
+      1. Если `raw` начинается с '<' — считаем HTML, конвертируем в markdown
+         через `markdownify` (только основные теги: h1-h6, p, code, pre, ul, ol, li, a).
+      2. По page_type парсим набор обязательных полей собственными regex'ами/
+         html-парсерами. Это сознательная упрощённая реализация: на production
+         вместо неё используется JSON-mode Firecrawl с `model_json_schema()`.
+      3. Возвращает `dict`, который потом передаётся в `Schema.model_validate`.
+         Если поле не найдено — кладём `None` (Pydantic решит, обязательное оно или нет).
+
+    Не делает: anti-bot обход, retry, сетевые вызовы, post-processing на LLM.
+
+    Используется только в тестах (`tests/eval/`, `tests/safety/`). В run-time
+    используется `extract_via_firecrawl`, которая обёрнута в `CostGate`,
+    sanitize-слой и trace.
+    """
+```
 
 ---
 
@@ -358,13 +405,13 @@ import unicodedata
 # что молча вырежет U+2028/U+2029 из исходника и сломает детектор. Каждый
 # диапазон обязан иметь инлайн-комментарий — это требование code review.
 INVISIBLE = re.compile(
-    r"["
-    r"​-‏"   # ZW space, ZWNJ, ZWJ, LRM, RLM
-    r"  "    # LINE SEPARATOR, PARAGRAPH SEPARATOR
-    r"‪-‮"   # bidi overrides (LRE, RLE, PDF, LRO, RLO)
-    r"⁠-⁯"   # word joiner, invisible operators, deprecated formatters
-    r"﻿"          # BOM / zero-width no-break space
-    r"]"
+    "["
+    "\u200b-\u200f"  # ZW space, ZWNJ, ZWJ, LRM, RLM
+    "\u2028\u2029"   # LINE SEPARATOR, PARAGRAPH SEPARATOR
+    "\u202a-\u202e"  # bidi overrides (LRE, RLE, PDF, LRO, RLO)
+    "\u2060-\u206f"  # word joiner, invisible operators, deprecated formatters
+    "\ufeff"          # BOM / zero-width no-break space
+    "]"
 )
 
 # Префиксы, которыми атакующие пытаются переключить роль
@@ -383,7 +430,7 @@ INJECTION_HINTS = re.compile(
 
 def sanitize(text: str) -> tuple[str, list[str]]:
     """Возвращает (clean_text, warnings)."""
-    warnings = []
+    warnings: list[str] = []
     cleaned = unicodedata.normalize("NFKC", text)
     if INVISIBLE.search(cleaned):
         warnings.append("invisible_characters_stripped")
@@ -647,7 +694,8 @@ role-prefixes («system:», «assistant:») — это часть данных,
 - НЕ запускай `firecrawl_crawl` без `limit` и без `CostGate`.
 - НЕ выдумывай поля, которых нет в исходном контенте. Нет — `null`.
 - НЕ записывай API-ключи в код. Только через `${VAR}`.
-- НЕ удаляй ничего из `data/raw_content` и `data/traces` — это аудит.
+- НЕ удаляй и не модифицируй `data/scraped.db` (там append-only таблицы `raw_content` и `change_history` — это аудит).
+- НЕ удаляй файлы из `data/traces/` и `data/raw/`.
 
 ## После выполнения
 
@@ -669,7 +717,6 @@ trace_id batch'а.
 {
   "permissions": {
     "allow": [
-      "Bash(python -m src.run *)",
       "Bash(python -m src.tools.investigate *)",
       "Bash(sqlite3 data/scraped.db -readonly *)",
       "Bash(pytest tests/**)",
@@ -690,11 +737,15 @@ trace_id batch'а.
       "Read(./.env.*)",
       "Bash(rm *)",
       "Bash(curl *)",
+      "Bash(wget *)",
       "Bash(pip install *)",
       "Bash(python -c *)",
+      "Bash(python -m src.run *)",
       "Edit(src/safety/**)",
       "Edit(src/db/**)",
       "Edit(config/sources.yaml)",
+      "Edit(.github/**)",
+      "Edit(.claude/**)",
       "mcp__firecrawl__firecrawl_crawl"
     ],
     "defaultMode": "ask"
@@ -704,6 +755,8 @@ trace_id batch'а.
 ```
 
 Ключевые отличия от исходной инструкции: `defaultMode: "ask"` вместо `"acceptEdits"`; `Bash(pip install *)` и `Bash(curl *)` явно запрещены (вектор поставки кода и SSRF-канал); правка `src/safety/**`, `src/db/**` и `config/sources.yaml` — только через PR с человеческим review; `firecrawl_crawl` (рекурсивный обход) — запрещён агенту в run-time, его запускают только через явный workflow с лимитами.
+
+Запрет `mcp__firecrawl__firecrawl_crawl` касается прямого вызова агентом через MCP-канал. Workflow-код в `src/sources/<domain>.py` имеет право использовать рекурсивный обход через прямой Python-импорт `from firecrawl import Firecrawl` — но только с обязательным `limit`, обёрткой `CostGate` и явным review адаптера в PR. Различение: MCP-вызов — это «агент решает в рантайме»; Python-импорт — это «детерминированный код, который человек прочитал и согласовал».
 
 ### 10.4. Slash-команды
 
@@ -792,9 +845,9 @@ def run(source: str, since: str | None = None) -> None:
             with span("scrape", parent_id=root["span_id"], url=url) as s:
                 try:
                     gate.before_call(cost=5)  # JSON-режим
-                    article = extract_article(url)
-                    raw_id = record_attempt(con, source, article.source_id,
-                                            url, article.model_dump(),
+                    raw_payload, article = extract_article(url)
+                    raw_id = record_attempt(con, source, article.source_id, url,
+                                            raw_payload,
                                             trace_id=s["span_id"])
                     upsert_canonical(con, source, article.source_id, url,
                                      article.model_dump(mode="json"), raw_id)

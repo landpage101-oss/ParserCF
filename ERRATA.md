@@ -399,19 +399,36 @@ def extract_from_local(
 
 ---
 
+---
+
+## E-11. `architecture.mermaid` упоминается в трёх документах, но в репо отсутствует
+
+**Файлы:** `docs/ARCHITECTURE.md` §1, `docs/CURRENT_STATUS.md` (раздел «Что готово»), `agent_parser_secure_v2.md` §2.
+
+**Проблема.** Все три документа ссылаются на `architecture.mermaid` как существующий артефакт «в корне репо». На момент фиксации Phase 0 файла нет — это призрачная ссылка. Любой новый разработчик, который попробует открыть `architecture.mermaid` после клонирования, получит «file not found» и потеряет доверие к остальной документации.
+
+**Фикс.** Поместить минимальный черновик `architecture.mermaid` в корень репо. Содержимое подготовлено в `outputs/architecture.mermaid` — это flowchart по шести слоям ровно как описано в `docs/ARCHITECTURE.md` §3–§8. Черновик намеренно простой: 6 subgraph'ов, основные узлы, потоки данных, cross-cutting safety perimeter. Дальнейшие итерации — отдельные PR.
+
+`docs/CURRENT_STATUS.md` обновлён в составе этой ERRATA: упоминание `architecture.mermaid` перенесено из «Что готово» в «Что НЕ готово» с ссылкой на черновик. После того как черновик попадёт в корень репо коммитом Этапа 0 — строка возвращается обратно в «Что готово».
+
+**Acceptance.** `ls architecture.mermaid` в корне репо возвращает файл; `mermaid-cli` или `mmdc -i architecture.mermaid -o /tmp/test.svg` рендерит без синтаксических ошибок (опционально, не блокер); `grep -rn "architecture.mermaid" .` находит ссылки только в трёх документах, упомянутых выше.
+
+---
+
 ## Чек-лист применения ERRATA
 
 Перед тем как закрыть Этап 0 коммитом:
 
-- [ ] E-1: `sanitize.py` — `\u`-escape sequences, литералы запрещены code-review-правилом.
-- [ ] E-2: все четыре Pydantic-схемы имеют `source`, `source_id`, `source_url`. `evals_and_ci.md` §3 + 20 `expected.json` обновлены.
-- [ ] E-3: `_resolve_base_field` через `removesuffix`, unit-тест добавлен.
-- [ ] E-4: `extract_article` возвращает `(raw_payload, article)`; `record_attempt` пишет raw, `upsert_canonical` пишет validated.
-- [ ] E-5: `Bash(python -m src.run *)` удалён из allow, добавлен в deny; добавлены deny `wget`, `Edit(.github/**)`, `Edit(.claude/**)`.
-- [ ] E-6: пояснение про MCP vs Python-импорт добавлено в §10.3 и §4.1.
-- [ ] E-7: контракт `extract_from_local` зафиксирован в §5.4 `agent_parser_secure_v2.md`.
-- [ ] E-8: комментарий про `ROLE_PREFIXES`-чувствительность добавлен в `evals_and_ci.md` §6.4.
-- [ ] E-9: файл переименован в `agent_parser_secure_v2.md`; `grep -rn "agent_parser_secure_ver2"` пусто.
-- [ ] E-10: `CLAUDE.md` различает SQLite-таблицы и пути ФС.
+- [x] E-1: `sanitize.py` — `\u`-escape sequences, литералы запрещены code-review-правилом.
+- [x] E-2: все четыре Pydantic-схемы имеют `source`, `source_id`, `source_url`. `evals_and_ci.md` §3 + 20 `expected.json` обновлены.
+- [x] E-3: `_resolve_base_field` через `removesuffix`, unit-тест добавлен.
+- [x] E-4: `extract_article` возвращает `(raw_payload, article)`; `record_attempt` пишет raw, `upsert_canonical` пишет validated.
+- [x] E-5: `Bash(python -m src.run *)` удалён из allow, добавлен в deny; добавлены deny `wget`, `Edit(.github/**)`, `Edit(.claude/**)`.
+- [x] E-6: пояснение про MCP vs Python-импорт добавлено в §10.3 и §4.1.
+- [x] E-7: контракт `extract_from_local` зафиксирован в §5.4 `agent_parser_secure_v2.md`.
+- [x] E-8: комментарий про `ROLE_PREFIXES`-чувствительность добавлен в `evals_and_ci.md` §6.4.
+- [x] E-9: файл переименован в `agent_parser_secure_v2.md`; `grep -rn "agent_parser_secure_ver2"` пусто.
+- [x] E-10: `CLAUDE.md` различает SQLite-таблицы и пути ФС.
+- [x] E-11: `architecture.mermaid` положен в корень репо; `docs/CURRENT_STATUS.md` ссылается на него обратно из «Что готово».
 
 После применения — `git commit -m "docs: apply ERRATA, sync schemas, fix sanitize regex (E-1..E-10)"`. Дальше можно стартовать Этап 1.
