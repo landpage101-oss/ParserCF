@@ -1,0 +1,10 @@
+# Allow-list источников ревьюится только владельцем.
+config/sources.yaml @landpage101-oss
+
+# Safety perimeter и DB — изменения только через PR с явным review.
+src/safety/ @landpage101-oss
+src/db/ @landpage101-oss
+
+# CI и Claude Code конфиг — тоже под контролем владельца.
+.github/ @landpage101-oss
+.claude/ @landpage101-oss
