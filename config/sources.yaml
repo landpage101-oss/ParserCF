@@ -1,0 +1,4 @@
+# Allow-list источников. Любое изменение — через PR с CODEOWNERS-approve.
+# Спецификация полей — src/compliance/sources_config.py::SourceConfig.
+# На Этапе 6 сюда добавляется первая запись для docs.python.org.
+[]
