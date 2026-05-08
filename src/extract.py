@@ -131,7 +131,7 @@ def _parse_product(md: str, html: str, url: str) -> dict[str, object]:
         "source": source,
         "source_url": url,
         "source_id": source_id,
-        "name": h1.group(1).strip() if h1 else "Unknown",
+        "name": h1.group(1).strip() if h1 else None,
         "price": price,
         "currency": currency,
         "in_stock": in_stock,
@@ -167,6 +167,10 @@ def extract_from_local(
     raw: str,
     page_type: PageType,
     *,
+    source: str = "synthetic",
+    source_id: str = "test-id",
+    language: str = "en",
+    section_path: list[str] | None = None,
     fallback_url: str = "https://example.invalid/synthetic",
 ) -> dict[str, object]:
     """Local extraction test double. Accepts HTML or markdown; never makes network calls."""
@@ -177,4 +181,11 @@ def extract_from_local(
         html = ""
         md = raw
     data = _PARSERS[page_type](md, html, fallback_url)
+    data["source"] = source
+    data["source_id"] = source_id
+    data["source_url"] = fallback_url
+    if page_type == "article":
+        data["language"] = language
+    if page_type == "docs":
+        data["section_path"] = section_path if section_path is not None else []
     return _apply_sanitize(data)

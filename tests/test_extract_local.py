@@ -50,13 +50,25 @@ extensively throughout the language for representing text data.</p>
 </body>
 </html>"""
 
+_NO_NAME_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<body>
+  <section class="gallery">
+    <img src="img/product.jpg" alt="Product">
+  </section>
+</body>
+</html>"""
+
 
 def _validate(result: dict[str, object], page_type: PageType) -> object:
     return PAGE_TYPE_TO_SCHEMA[page_type].model_validate(result)
 
 
 def test_extract_local_article_happy_path() -> None:
-    result = extract_from_local(_ARTICLE_HTML, "article")
+    result = extract_from_local(
+        _ARTICLE_HTML, "article", source="synthetic", source_id="test-article"
+    )
 
     assert result["title"] == "Understanding Python Decorators"
     assert result["language"] == "en"
@@ -68,7 +80,7 @@ def test_extract_local_article_happy_path() -> None:
 
 
 def test_extract_local_docs_with_code_blocks() -> None:
-    result = extract_from_local(_DOCS_MD, "docs")
+    result = extract_from_local(_DOCS_MD, "docs", source="synthetic", source_id="test-docs")
 
     assert result["title"] == "json — JSON encoder and decoder"
     count = result["code_block_count"]
@@ -78,16 +90,45 @@ def test_extract_local_docs_with_code_blocks() -> None:
 
 
 def test_extract_local_rejects_placeholder_via_pydantic() -> None:
-    result = extract_from_local(_PLACEHOLDER_HTML, "article")
+    result = extract_from_local(
+        _PLACEHOLDER_HTML, "article", source="synthetic", source_id="test-placeholder"
+    )
 
     with pytest.raises(ValidationError, match="access denied"):
         _validate(result, "article")
 
 
 def test_sanitize_strips_role_prefix_before_validate() -> None:
-    result = extract_from_local(_INJECTION_HTML, "article")
+    result = extract_from_local(
+        _INJECTION_HTML, "article", source="synthetic", source_id="test-injection"
+    )
 
     body = str(result["body_md"])
     assert "system:" not in body
     assert "[neutralized-role-prefix]:" in body
     _validate(result, "article")
+
+
+def test_extract_local_passes_source_metadata_through() -> None:
+    result = extract_from_local(
+        _ARTICLE_HTML,
+        "article",
+        source="my-source",
+        source_id="my-source-id",
+        language="fr",
+    )
+
+    assert result["source"] == "my-source"
+    assert result["source_id"] == "my-source-id"
+    assert result["language"] == "fr"
+    assert result["source_url"] == "https://example.invalid/synthetic"
+
+
+def test_extract_local_product_without_name_returns_none() -> None:
+    result = extract_from_local(
+        _NO_NAME_HTML, "product", source="synthetic", source_id="test-no-name"
+    )
+
+    assert result["name"] is None
+    with pytest.raises(ValidationError):
+        _validate(result, "product")
