@@ -1,0 +1,12 @@
+{
+  "page_type": "product",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "gallery-only page: no h1, no description, no price — must be rejected",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "product_15_gallery_only"
+  },
+  "expected_validation_status": "rejected",
+  "expected_validation_error_contains": "name"
+}

@@ -1,0 +1,18 @@
+{
+  "page_type": "product",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "non-US number format with thousand separator and comma decimal; ruble symbol → RUB",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "product_13_currency_variants",
+    "name": "Кофеварка XYZ",
+    "sku": null,
+    "price": "12345.67",
+    "currency": "RUB",
+    "in_stock": true,
+    "description_min_length": 10
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

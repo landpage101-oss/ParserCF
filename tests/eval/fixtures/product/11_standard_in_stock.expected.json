@@ -1,0 +1,18 @@
+{
+  "page_type": "product",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "happy path: price in USD, in stock, all structured fields present",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "product_11_in_stock",
+    "name": "Mechanical Keyboard Pro",
+    "sku": null,
+    "price": "29.99",
+    "currency": "USD",
+    "in_stock": true,
+    "description_min_length": 50
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

@@ -1,0 +1,18 @@
+{
+  "page_type": "product",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "price=null is valid — price-on-request product with no extractable price",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "product_14_no_visible_price",
+    "name": "Enterprise Storage Array",
+    "sku": null,
+    "price": null,
+    "currency": null,
+    "in_stock": true,
+    "description_min_length": 50
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}
