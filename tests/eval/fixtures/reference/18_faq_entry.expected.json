@@ -1,0 +1,15 @@
+{
+  "page_type": "reference",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "FAQ entry as reference: question as term, answer paragraphs as definition",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "reference_18_faq_reset_password",
+    "term": "How do I reset my password?",
+    "definition_min_length": 50,
+    "definition_must_contain": ["email", "link"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

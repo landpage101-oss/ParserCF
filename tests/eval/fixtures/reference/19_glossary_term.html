@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Memoization | Programming Glossary</title>
+</head>
+<body>
+  <main>
+    <h1>Memoization</h1>
+    <p>Memoization is an optimisation technique that stores (caches) the results
+       of expensive function calls and returns the cached result when the same
+       inputs occur again. It trades memory for speed and is a specific form
+       of dynamic programming.</p>
+    <h2>Code examples</h2>
+    <ul>
+      <li>Python — built-in decorator:
+        <pre><code>from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def fib(n):
+    return n if n &lt; 2 else fib(n - 1) + fib(n - 2)</code></pre>
+      </li>
+      <li>Python — manual dict cache:
+        <pre><code>_cache = {}
+
+def fib(n):
+    if n not in _cache:
+        _cache[n] = n if n &lt; 2 else fib(n - 1) + fib(n - 2)
+    return _cache[n]</code></pre>
+      </li>
+      <li>JavaScript — closure cache:
+        <pre><code>const memo = fn =&gt; {
+  const cache = {};
+  return (...args) =&gt; cache[args] ?? (cache[args] = fn(...args));
+};</code></pre>
+      </li>
+    </ul>
+  </main>
+</body>
+</html>

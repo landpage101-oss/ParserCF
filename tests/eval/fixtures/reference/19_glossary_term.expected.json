@@ -1,0 +1,15 @@
+{
+  "page_type": "reference",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "glossary term with 3 fenced code examples in different languages",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "reference_19_glossary_memoization",
+    "term": "Memoization",
+    "definition_min_length": 50,
+    "definition_must_contain": ["cache", "function"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

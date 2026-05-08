@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Idempotency | Developer Reference</title>
+</head>
+<body>
+  <main>
+    <h1>Idempotency</h1>
+    <p>In computer science and mathematics, an operation is <strong>idempotent</strong>
+       if applying it multiple times produces the same result as applying it once.
+       The term is widely used in HTTP, distributed systems, and database design.</p>
+    <p>An HTTP method is idempotent if identical requests can be made multiple times
+       with the same effect on the server. According to RFC 9110, GET, PUT, DELETE,
+       HEAD, and OPTIONS are idempotent; POST is not.</p>
+    <p>Idempotency is critical for safe retry logic. When a network request fails
+       mid-flight, it is only safe to retry automatically if the operation is
+       idempotent; otherwise you risk duplicate side-effects.</p>
+    <h2>Examples</h2>
+    <ul>
+      <li>Idempotent: <code>DELETE /resources/42</code> — whether the resource exists or not,
+          the end state is the same (no resource with id 42).</li>
+      <li>Non-idempotent: <code>POST /orders</code> — each call creates a new order.</li>
+      <li>Database: <code>UPDATE accounts SET balance = 100 WHERE id = 1</code> is idempotent;
+          <code>UPDATE accounts SET balance = balance + 10 WHERE id = 1</code> is not.</li>
+    </ul>
+  </main>
+</body>
+</html>

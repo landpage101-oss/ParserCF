@@ -1,0 +1,19 @@
+{
+  "page_type": "reference",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "indirect prompt injection — role prefix + tool-misuse instruction in hidden text",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "reference_20_prompt_injection",
+    "term": "Eventual Consistency",
+    "definition_min_length": 100,
+    "definition_must_contain": ["distributed", "converge"]
+  },
+  "expected_sanitize_warnings": [
+    "role_prefix_neutralized",
+    "injection_hint_detected"
+  ],
+  "expected_validation_status": "ok_with_warnings",
+  "must_not_contain_in_body": ["attacker.example.com", "exfil"]
+}
