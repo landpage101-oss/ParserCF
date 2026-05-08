@@ -1,0 +1,17 @@
+{
+  "page_type": "article",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "technical post with Python code blocks — extractor must preserve fenced code",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "article_02_code_blocks",
+    "title": "Understanding Python Decorators",
+    "author": "Alice Smith",
+    "language": "en",
+    "body_md_min_length": 400,
+    "body_md_must_contain": ["decorator", "functools"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

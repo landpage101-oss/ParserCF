@@ -1,0 +1,12 @@
+{
+  "page_type": "article",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "anti-bot error page disguised as content",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "article_05_error_page"
+  },
+  "expected_validation_status": "rejected",
+  "expected_validation_error_contains": "placeholder/error"
+}

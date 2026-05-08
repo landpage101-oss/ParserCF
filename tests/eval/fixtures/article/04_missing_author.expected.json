@@ -1,0 +1,17 @@
+{
+  "page_type": "article",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "missing author meta tag — author=null is valid per schema",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "article_04_missing_author",
+    "title": "Getting Started with SQLite in Python",
+    "author": null,
+    "language": "en",
+    "body_md_min_length": 300,
+    "body_md_must_contain": ["SQLite", "sqlite3"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

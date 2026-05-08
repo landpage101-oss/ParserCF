@@ -1,0 +1,19 @@
+{
+  "page_type": "article",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "happy path: all fields present, English",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "article_01_static_typing",
+    "source_url": "https://example.com/blog/why-static-typing-matters",
+    "title": "Why Static Typing Matters",
+    "author": "Jane Doe",
+    "published_at": "2026-03-15T00:00:00Z",
+    "language": "en",
+    "body_md_min_length": 200,
+    "body_md_must_contain": ["type system", "compile-time"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Getting Started with SQLite in Python | Tech Blog</title>
+  <meta property="article:published_time" content="2026-04-10T00:00:00Z">
+</head>
+<body>
+  <article>
+    <h1>Getting Started with SQLite in Python</h1>
+    <p>SQLite is a lightweight, serverless relational database that ships with Python's
+       standard library. No installation required — import <code>sqlite3</code> and
+       start storing data immediately.</p>
+    <h2>Creating a Connection</h2>
+    <p>Open a connection to a database file with <code>sqlite3.connect()</code>.
+       Pass <code>":memory:"</code> for an in-memory database ideal for tests and
+       ephemeral state that should not persist between runs.</p>
+    <h2>Executing Queries</h2>
+    <p>Use a cursor from <code>connection.cursor()</code> to execute SQL statements.
+       Always prefer parameterised queries with <code>?</code> placeholders to prevent
+       SQL injection. Call <code>connection.commit()</code> after any INSERT, UPDATE,
+       or DELETE statement.</p>
+    <h2>Context Manager Protocol</h2>
+    <p>The connection object supports the <code>with</code> statement: a successful
+       block auto-commits the transaction; an exception triggers an automatic rollback.
+       This makes transaction management concise and correct without boilerplate.</p>
+    <p>SQLite handles most single-writer workloads without any external service
+       dependency, making it the ideal starting point for CLI tools, embedded
+       applications, and early-stage products.</p>
+  </article>
+</body>
+</html>

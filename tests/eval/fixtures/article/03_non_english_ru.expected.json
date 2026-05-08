@@ -1,0 +1,15 @@
+{
+  "page_type": "article",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "non-English content: Russian Cyrillic text, language=ru",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "article_03_non_english_ru",
+    "language": "ru",
+    "body_md_min_length": 400,
+    "body_md_must_contain": ["PEP 8", "Python"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}
