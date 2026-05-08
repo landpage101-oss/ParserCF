@@ -1,0 +1,17 @@
+{
+  "page_type": "docs",
+  "captured_at": "2026-05-08T15:07:28.849942+00:00",
+  "captured_from": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/GET",
+  "captured_via": "firecrawl_scrape",
+  "captured_content_hash": "sha256:9603128ee31bf585c8a242e554a988768223698b612b6bcd6b4780fb59674024",
+  "edge_case": "structured HTTP reference page with property table and code examples",
+  "expected_pydantic": {
+    "source": "docs_python_org",
+    "source_id": "Web/HTTP/Methods/GET",
+    "title_must_contain": "GET",
+    "section_path_min_length": 1,
+    "code_block_count_min": 2,
+    "body_md_min_length": 1000
+  },
+  "expected_validation_status": "ok"
+}

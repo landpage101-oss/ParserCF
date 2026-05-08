@@ -1,0 +1,17 @@
+{
+  "page_type": "docs",
+  "captured_at": "2026-05-08T15:07:26.799006+00:00",
+  "captured_from": "https://docs.python.org/3/library/json.html",
+  "captured_via": "firecrawl_scrape",
+  "captured_content_hash": "sha256:27455affb6cfeea8cb3d692a41db58607d1dbb89966065d9b842c89ee624fae3",
+  "edge_case": "long technical docs page with many code blocks",
+  "expected_pydantic": {
+    "source": "docs_python_org",
+    "source_id": "library/json",
+    "title_must_contain": "json",
+    "section_path_min_length": 1,
+    "code_block_count_min": 5,
+    "body_md_min_length": 5000
+  },
+  "expected_validation_status": "ok"
+}
