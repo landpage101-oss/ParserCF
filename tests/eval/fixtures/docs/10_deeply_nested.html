@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Low-level API — asyncio Streams | Example Docs</title>
+</head>
+<body>
+  <nav class="breadcrumb" aria-label="breadcrumb">
+    <ol>
+      <li><a href="/">Library</a></li>
+      <li><a href="/concurrency/">Concurrency</a></li>
+      <li><a href="/concurrency/asyncio/">asyncio</a></li>
+      <li><a href="/concurrency/asyncio/streams/">Streams</a></li>
+      <li aria-current="page">Low-level API</li>
+    </ol>
+  </nav>
+
+  <article>
+    <h1>Low-level API</h1>
+    <p>The low-level streaming API provides direct control over
+       <code>StreamReader</code> and <code>StreamWriter</code> objects
+       without the convenience wrappers.</p>
+
+    <h2>Library</h2>
+    <p>The standard library module <code>asyncio</code> ships with
+       Python 3.4+. No external dependencies are required.</p>
+
+    <h3>Concurrency primitives</h3>
+    <p>asyncio builds on top of an event loop that multiplexes I/O
+       across coroutines without OS-level threading overhead.</p>
+
+    <h4>asyncio Streams</h4>
+    <p>Streams are high-level async/await primitives built on top of
+       the lower-level transport and protocol interfaces.</p>
+
+    <h5>Low-level API details</h5>
+    <p>At the lowest layer, you obtain a transport and protocol pair
+       by calling <code>loop.create_connection()</code> directly.
+       This gives maximum flexibility at the cost of boilerplate.</p>
+
+    <pre><code>import asyncio
+
+class EchoClientProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+        transport.write(b"Hello!\n")
+
+    def data_received(self, data):
+        print(f"Received: {data.decode()}")
+
+    def connection_lost(self, exc):
+        asyncio.get_event_loop().stop()
+</code></pre>
+
+    <p>Call <code>loop.run_until_complete()</code> to drive the event
+       loop until the coroutine completes.</p>
+
+    <pre><code>loop = asyncio.get_event_loop()
+coro = loop.create_connection(EchoClientProtocol, "127.0.0.1", 8888)
+loop.run_until_complete(coro)
+loop.run_forever()
+</code></pre>
+  </article>
+</body>
+</html>

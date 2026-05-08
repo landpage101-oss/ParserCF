@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>API Reference: JsonParser | Example Docs</title>
+</head>
+<body>
+  <nav class="breadcrumb">
+    <a href="/">Library</a> &rsaquo;
+    <a href="/parsers/">Parsers</a> &rsaquo;
+    <span>JsonParser</span>
+  </nav>
+  <article>
+    <h1>API Reference</h1>
+    <p>The <code>JsonParser</code> class provides a high-level interface for
+       parsing and serialising JSON documents with configurable strictness.</p>
+
+    <h2>class JsonParser</h2>
+    <pre><code>class JsonParser(strict: bool = True, max_depth: int = 128)</code></pre>
+    <p>Creates a new parser instance. Set <code>strict=False</code> to allow
+       trailing commas and C-style comments in the input.</p>
+
+    <h3>Parameters</h3>
+    <ul>
+      <li><code>strict</code> (bool, default <code>True</code>) — Enforce strict
+          RFC 7159 syntax. Disable only for hand-authored config files.</li>
+      <li><code>max_depth</code> (int, default 128) — Maximum nesting depth.
+          Raises <code>DepthError</code> if exceeded.</li>
+      <li><code>encoding</code> (str, default <code>"utf-8"</code>) — Expected
+          byte-string encoding when <code>parse_bytes()</code> is called.</li>
+    </ul>
+
+    <h2>JsonParser.parse</h2>
+    <pre><code>def parse(text: str) -> Any</code></pre>
+    <p>Parse a JSON string and return the corresponding Python object.
+       Raises <code>ParseError</code> on malformed input, <code>DepthError</code>
+       if nesting exceeds <code>max_depth</code>.</p>
+
+    <h3>Example</h3>
+    <pre><code>parser = JsonParser()
+data = parser.parse('{"version": 2, "items": [1, 2, 3]}')
+print(data["version"])  # 2
+</code></pre>
+
+    <h2>JsonParser.dumps</h2>
+    <pre><code>def dumps(obj: Any, *, indent: int | None = None) -> str</code></pre>
+    <p>Serialise a Python object to a JSON string. Pass <code>indent</code>
+       for pretty-printed output.</p>
+
+    <h3>Errors</h3>
+    <ul>
+      <li><code>SerialiseError</code> — Raised when <code>obj</code> contains
+          a type that has no JSON representation (e.g. <code>datetime</code>
+          without a custom encoder).</li>
+    </ul>
+  </article>
+</body>
+</html>

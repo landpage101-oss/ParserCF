@@ -1,0 +1,16 @@
+{
+  "page_type": "docs",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "5-level section path: Library → Concurrency → asyncio → Streams → Low-level API",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "docs_10_deeply_nested",
+    "title": "Low-level API",
+    "section_path_min_length": 5,
+    "code_block_count_min": 2,
+    "body_md_min_length": 300
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

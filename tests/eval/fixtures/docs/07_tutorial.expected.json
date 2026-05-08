@@ -1,0 +1,16 @@
+{
+  "page_type": "docs",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "tutorial with H1/H2/H3/H4 heading hierarchy — section_path depth and code preservation",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "docs_07_tutorial",
+    "title": "Building a Web Scraper with Python",
+    "code_block_count_min": 4,
+    "body_md_min_length": 500,
+    "body_md_must_contain": ["BeautifulSoup", "requests"]
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}

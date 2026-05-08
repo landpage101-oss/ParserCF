@@ -1,0 +1,15 @@
+{
+  "page_type": "docs",
+  "captured_at": "2026-04-29T10:00:00Z",
+  "captured_from": "synthetic",
+  "edge_case": "API reference style: parameter list, multiple code blocks with signatures",
+  "expected_pydantic": {
+    "source": "synthetic",
+    "source_id": "docs_06_api_reference",
+    "title": "API Reference",
+    "code_block_count_min": 3,
+    "body_md_min_length": 300
+  },
+  "expected_sanitize_warnings": [],
+  "expected_validation_status": "ok"
+}
