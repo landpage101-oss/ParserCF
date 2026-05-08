@@ -1,4 +1,10 @@
 # Allow-list источников. Любое изменение — через PR с CODEOWNERS-approve.
 # Спецификация полей — src/compliance/sources_config.py::SourceConfig.
-# На Этапе 6 сюда добавляется первая запись для docs.python.org.
-[]
+- domain: docs.python.org
+  added_by: landpage101-oss
+  reviewed_at: 2026-05-07
+  legal_basis: "Public Python Software Foundation documentation, robots.txt allow, no auth required"
+  rate_limit_rps: 1.0
+  adapter: src/sources/docs_python_org.py
+  api_available: false
+  api_check_notes: "PSF не предоставляет API для documentation, scrape — единственный путь"
