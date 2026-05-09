@@ -8,6 +8,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import markdownify as _md_lib
+from bs4 import BeautifulSoup
 from firecrawl import Firecrawl
 from pydantic import BaseModel
 
@@ -27,6 +28,7 @@ _AUTHOR_RE = re.compile(r"\bBy\s+([A-Z][a-zA-Z .\'-]{2,60})")
 _CODE_FENCE_RE = re.compile(r"^```", re.MULTILINE)
 _PRICE_RE = re.compile(r"([€$£₽])\s*([\d,.\s]+)|([\d,.\s]+)\s*([€$£₽]|USD|EUR|RUB|GBP)")
 _IN_STOCK_RE = re.compile(r'data-in-stock=["\']?(\w+)["\']?', re.IGNORECASE)
+_TERM_PREFIX_RE = re.compile(r"^(?:Glossary|Reference|Term|Definition|FAQ):\s+", re.IGNORECASE)
 
 # ── production path ───────────────────────────────────────────────────────────
 
@@ -62,6 +64,17 @@ def _html_to_md(html: str) -> str:
     return str(_md_lib.markdownify(html, convert=_MD_TAGS, heading_style="ATX"))
 
 
+def _extract_section_path(html: str) -> list[str]:
+    """Parse breadcrumb nav from HTML to derive section_path for docs pages."""
+    if not html:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    nav = soup.find("nav", attrs={"class": re.compile(r"breadcrumb", re.IGNORECASE)})
+    if nav is None:
+        return []
+    return [li.get_text(strip=True) for li in nav.find_all("li") if li.get_text(strip=True)]
+
+
 def _derive_source(url: str) -> tuple[str, str]:
     netloc = urlparse(url).netloc or "synthetic"
     source = netloc.removeprefix("www.")
@@ -82,19 +95,25 @@ def _parse_article(md: str, html: str, url: str) -> dict[str, object]:
     h1 = _H1_RE.search(md)
     lang_m = _LANG_RE.search(html)
     author_m = _AUTHOR_RE.search(md)
+    published_at: str | None = None
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        pub_meta = soup.find("meta", property="article:published_time")
+        if pub_meta:
+            published_at = str(pub_meta.get("content", "")) or None
     return {
         "source": source,
         "source_url": url,
         "source_id": source_id,
         "title": h1.group(1).strip() if h1 else "Untitled",
         "author": author_m.group(1).strip() if author_m else None,
-        "published_at": None,
+        "published_at": published_at,
         "body_md": md,
         "language": lang_m.group(1) if lang_m else "en",
     }
 
 
-def _parse_docs(md: str, _html: str, url: str) -> dict[str, object]:
+def _parse_docs(md: str, html: str, url: str) -> dict[str, object]:
     source, source_id = _derive_source(url)
     h1 = _H1_RE.search(md)
     code_block_count = len(_CODE_FENCE_RE.findall(md)) // 2
@@ -103,7 +122,7 @@ def _parse_docs(md: str, _html: str, url: str) -> dict[str, object]:
         "source_url": url,
         "source_id": source_id,
         "title": h1.group(1).strip() if h1 else "Untitled",
-        "section_path": [],
+        "section_path": _extract_section_path(html),
         "body_md": md,
         "code_block_count": code_block_count,
         "last_updated": None,
@@ -142,11 +161,12 @@ def _parse_product(md: str, html: str, url: str) -> dict[str, object]:
 def _parse_reference(md: str, _html: str, url: str) -> dict[str, object]:
     source, source_id = _derive_source(url)
     h1 = _H1_RE.search(md)
+    term = _TERM_PREFIX_RE.sub("", h1.group(1).strip()) if h1 else "Unknown"
     return {
         "source": source,
         "source_url": url,
         "source_id": source_id,
-        "term": h1.group(1).strip() if h1 else "Unknown",
+        "term": term,
         "definition": md,
         "examples": [],
         "last_updated": None,
@@ -186,6 +206,6 @@ def extract_from_local(
     data["source_url"] = fallback_url
     if page_type == "article":
         data["language"] = language
-    if page_type == "docs":
-        data["section_path"] = section_path if section_path is not None else []
+    if page_type == "docs" and section_path is not None:
+        data["section_path"] = section_path
     return _apply_sanitize(data)
