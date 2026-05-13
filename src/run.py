@@ -117,6 +117,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass  # python-dotenv is dev-only; env vars expected to be set in prod/CI
     args = _parse_args(argv)
     counts = run(
         args.source,
