@@ -22,3 +22,8 @@ def test_parse_id_strips_prefix_and_extension(adapter: DocsPythonOrgAdapter) -> 
         adapter.parse_id("https://docs.python.org/3/reference/expressions.html")
         == "reference/expressions"
     )
+
+
+def test_page_type_is_docs() -> None:
+    adapter = DocsPythonOrgAdapter()
+    assert adapter.page_type == "docs"

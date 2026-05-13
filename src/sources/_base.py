@@ -3,6 +3,7 @@ from typing import Protocol
 
 
 class SourceAdapter(Protocol):
+    page_type: str
     domain: str
     name: str
 
