@@ -14,6 +14,7 @@ _SEEDS = [
 
 
 class DocsPythonOrgAdapter:
+    page_type = "docs"
     domain = "docs.python.org"
     name = "docs_python_org"
 
