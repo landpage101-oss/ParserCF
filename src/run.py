@@ -81,6 +81,12 @@ def run(
                         counts["errors"] += 1
                         continue
                     source_id = adapter.parse_id(url)
+
+                    # TODO #8 / ERRATA E-2: identifiers we own; Firecrawl LLM guesses them wrong.
+                    raw["source"] = source
+                    raw["source_id"] = source_id
+                    raw["source_url"] = url
+
                     raw_id = record_attempt(con, source, source_id, url, raw, s["span_id"])
                     try:
                         instance = validate_extracted(raw, adapter.page_type)

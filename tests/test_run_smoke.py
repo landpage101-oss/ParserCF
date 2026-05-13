@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -130,3 +131,51 @@ def test_run_propagates_config_errors(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr("src.run.fetch_via_firecrawl", _config_error_fetch)
     with pytest.raises(KeyError, match="FIRECRAWL_API_KEY"):
         run("docs_python_org", db_path=db)
+
+
+def test_run_overrides_source_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Adapter-provided source/source_id/source_url override Firecrawl-extracted values.
+
+    TODO #8: Firecrawl JSON-mode treats these fields as content; LLM fills them
+    with metadata guesses. They must be overridden with adapter-provided truth.
+    """
+    db = _setup(tmp_path, monkeypatch)
+    # raw with WRONG values for the three identifier fields (as if Firecrawl LLM guessed)
+    polluted_raw: dict[str, Any] = {
+        "source": "WRONG_SOURCE_FROM_LLM_GUESS",
+        "source_url": "https://wrong.invalid/llm-guessed-url",
+        "source_id": "wrong_source_id",
+        "title": "json — JSON encoder and decoder",
+        "section_path": [],
+        "body_md": "A standard library module for encoding and decoding JSON data.",
+        "code_block_count": 0,
+        "last_updated": None,
+    }
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", lambda _url, _pt: dict(polluted_raw))
+
+    counts = run("docs_python_org", db_path=db)
+    assert counts["canonical"] == 1
+
+    con = sqlite3.connect(db)
+    try:
+        # Table columns: adapter-provided
+        row = con.execute("SELECT source, source_id, url FROM canonical_records").fetchone()
+        assert row[0] == "docs_python_org"
+        assert row[1] == "json"  # _StubAdapter.parse_id returns URL leaf
+        assert row[2] == "https://docs.python.org/3/library/json.html"
+
+        # Payload fields: must also be adapter-provided after the fix
+        payload_row = con.execute("SELECT payload FROM canonical_records").fetchone()
+        payload = json.loads(payload_row[0])
+        assert payload["source"] == "docs_python_org"
+        assert payload["source_id"] == "json"
+        assert payload["source_url"] == "https://docs.python.org/3/library/json.html"
+
+        # raw_content persists the normalized (overridden) raw, not the polluted Firecrawl output
+        raw_row = con.execute("SELECT raw_payload FROM raw_content").fetchone()
+        raw_persisted = json.loads(raw_row[0])
+        assert raw_persisted["source"] == "docs_python_org"
+        assert raw_persisted["source_id"] == "json"
+        assert raw_persisted["source_url"] == "https://docs.python.org/3/library/json.html"
+    finally:
+        con.close()
