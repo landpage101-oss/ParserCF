@@ -8,7 +8,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import markdownify as _md_lib
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from firecrawl import Firecrawl
 from pydantic import BaseModel
 
@@ -38,8 +38,12 @@ def _client() -> Firecrawl:
     return Firecrawl(api_key=os.environ["FIRECRAWL_API_KEY"])
 
 
-def extract_via_firecrawl(url: str, page_type: str) -> tuple[dict[str, object], BaseModel]:
-    """Fetch and extract a page via Firecrawl JSON-mode. Returns (raw_payload, validated)."""
+def fetch_via_firecrawl(url: str, page_type: str) -> dict[str, object]:
+    """Fetch raw JSON from Firecrawl. NO validation — caller persists raw first.
+
+    Returns the raw dict as received from Firecrawl (after sanitize).
+    Caller MUST call record_attempt(raw) before validate_extracted(raw, ...).
+    """
     schema_cls = PAGE_TYPE_TO_SCHEMA[page_type]
     result = _client().scrape(
         url,
@@ -54,7 +58,28 @@ def extract_via_firecrawl(url: str, page_type: str) -> tuple[dict[str, object], 
         val = raw_json.get(field)
         if isinstance(val, str):
             raw_json[field], _ = sanitize(val)
-    return raw_json, schema_cls.model_validate(raw_json)
+    return raw_json
+
+
+def validate_extracted(raw: dict[str, object], page_type: str) -> BaseModel:
+    """Validate raw payload against the schema for page_type.
+
+    Raises pydantic.ValidationError on failure. Caller is expected to have
+    already persisted raw via record_attempt — this function does not touch the DB.
+    """
+    schema_cls = PAGE_TYPE_TO_SCHEMA[page_type]
+    return schema_cls.model_validate(raw)
+
+
+def extract_via_firecrawl(url: str, page_type: str) -> tuple[dict[str, object], BaseModel]:
+    """Convenience wrapper: fetch + validate in one call.
+
+    Kept for backward compatibility. New code (run.py) should call
+    fetch_via_firecrawl and validate_extracted separately to preserve raw
+    on ValidationError (append-only invariant, ERRATA E-4).
+    """
+    raw = fetch_via_firecrawl(url, page_type)
+    return raw, validate_extracted(raw, page_type)
 
 
 # ── local test-double path ────────────────────────────────────────────────────
@@ -70,7 +95,7 @@ def _extract_section_path(html: str) -> list[str]:
         return []
     soup = BeautifulSoup(html, "html.parser")
     nav = soup.find("nav", attrs={"class": re.compile(r"breadcrumb", re.IGNORECASE)})
-    if nav is None:
+    if not isinstance(nav, Tag):
         return []
     return [li.get_text(strip=True) for li in nav.find_all("li") if li.get_text(strip=True)]
 
@@ -99,7 +124,7 @@ def _parse_article(md: str, html: str, url: str) -> dict[str, object]:
     if html:
         soup = BeautifulSoup(html, "html.parser")
         pub_meta = soup.find("meta", property="article:published_time")
-        if pub_meta:
+        if isinstance(pub_meta, Tag):
             published_at = str(pub_meta.get("content", "")) or None
     return {
         "source": source,
