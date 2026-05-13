@@ -73,7 +73,10 @@ def run(
                     gate.before_call(cost=5)  # may raise RuntimeError on circuit breaker
                     try:
                         raw = fetch_via_firecrawl(url, adapter.page_type)
-                    except Exception:  # noqa: BLE001 — unknown transport errors feed circuit breaker
+                    except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
+                        # Config errors are NOT transient — fail loud, not circuit breaker quota.
+                        raise
+                    except Exception:  # noqa: BLE001 — actual transport/transient errors feed circuit breaker
                         gate.after_error()
                         counts["errors"] += 1
                         continue

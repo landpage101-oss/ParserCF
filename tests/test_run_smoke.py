@@ -118,3 +118,15 @@ def test_run_circuit_breaker_stops(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     with pytest.raises(RuntimeError, match="circuit breaker"):
         run("docs_python_org", db_path=db)
+
+
+def test_run_propagates_config_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """KeyError (e.g. missing env var) should NOT be swallowed as transport error."""
+    db = _setup(tmp_path, monkeypatch)
+
+    def _config_error_fetch(_url: str, _pt: str) -> dict[str, Any]:
+        raise KeyError("FIRECRAWL_API_KEY")
+
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", _config_error_fetch)
+    with pytest.raises(KeyError, match="FIRECRAWL_API_KEY"):
+        run("docs_python_org", db_path=db)
