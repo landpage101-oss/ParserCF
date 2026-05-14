@@ -32,7 +32,7 @@
       "Edit(.claude/**)",
       "mcp__firecrawl__firecrawl_crawl"
     ],
-    "defaultMode": "ask"
+    "defaultMode": "default"
   },
   "model": "sonnet"
 }
