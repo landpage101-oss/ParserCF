@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m src.tools.investigate *)",
+      "Bash(sqlite3 data/scraped.db -readonly *)",
+      "Bash(pytest tests/**)",
+      "Read(src/**)",
+      "Read(config/**)",
+      "Read(data/raw/**)",
+      "Read(reports/**)",
+      "Edit(src/sources/**)",
+      "Edit(reports/investigations/**)",
+      "Write(src/sources/**)",
+      "Write(tests/sources/**)",
+      "Write(reports/investigations/**)",
+      "mcp__firecrawl__firecrawl_map",
+      "mcp__firecrawl__firecrawl_scrape"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(rm *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(pip install *)",
+      "Bash(python -c *)",
+      "Bash(python -m src.run *)",
+      "Edit(src/safety/**)",
+      "Edit(src/db/**)",
+      "Edit(config/sources.yaml)",
+      "Edit(.github/**)",
+      "Edit(.claude/**)",
+      "mcp__firecrawl__firecrawl_crawl"
+    ],
+    "defaultMode": "ask"
+  },
+  "model": "sonnet"
+}
