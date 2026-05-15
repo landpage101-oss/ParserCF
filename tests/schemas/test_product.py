@@ -50,6 +50,36 @@ def test_placeholder_rejected() -> None:
         )
 
 
+def test_legitimate_404_mention_accepted() -> None:
+    Product.model_validate(
+        {
+            "source": "shop_adapter",
+            "source_url": "https://shop.example.com/products/widget-x",
+            "source_id": "products/widget-x",
+            "name": "Widget X",
+            "in_stock": True,
+            "description": (
+                "The upstream service returned error 404 in processing;"
+                " our handler caught it and retried successfully."
+            ),
+        }
+    )
+
+
+def test_404_not_found_still_rejected() -> None:
+    with pytest.raises(ValidationError, match="placeholder/error"):
+        Product.model_validate(
+            {
+                "source": "shop_adapter",
+                "source_url": "https://shop.example.com/products/widget-x",
+                "source_id": "products/widget-x",
+                "name": "Widget X",
+                "in_stock": True,
+                "description": "404 Not Found — the page you requested does not exist.",
+            }
+        )
+
+
 def test_zero_or_negative_price_rejected() -> None:
     with pytest.raises(ValidationError, match="price must be > 0"):
         Product.model_validate(

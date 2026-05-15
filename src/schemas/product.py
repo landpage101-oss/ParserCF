@@ -30,7 +30,7 @@ class Product(BaseModel):
             "lorem ipsum",
             "page not found",
             "access denied",
-            "404",
+            "404 not found",
             "403 forbidden",
             "are you a robot",
         }

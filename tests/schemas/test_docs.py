@@ -47,3 +47,33 @@ def test_placeholder_rejected() -> None:
                 "code_block_count": 0,
             }
         )
+
+
+def test_legitimate_404_mention_accepted() -> None:
+    DocsPage.model_validate(
+        {
+            "source": "docs_python_org",
+            "source_url": "https://docs.python.org/3/library/json.html",
+            "source_id": "library/json",
+            "title": "Error Handling",
+            "body_md": (
+                "The upstream service returned error 404 in processing;"
+                " our handler caught it and retried successfully."
+            ),
+            "code_block_count": 0,
+        }
+    )
+
+
+def test_404_not_found_still_rejected() -> None:
+    with pytest.raises(ValidationError, match="placeholder/error"):
+        DocsPage.model_validate(
+            {
+                "source": "docs_python_org",
+                "source_url": "https://docs.python.org/3/library/json.html",
+                "source_id": "library/json",
+                "title": "Error Handling",
+                "body_md": "404 Not Found — the page you requested does not exist on this server.",
+                "code_block_count": 0,
+            }
+        )
