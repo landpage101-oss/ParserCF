@@ -49,3 +49,31 @@ def test_placeholder_rejected() -> None:
                 "definition": "Access denied. Please verify you are human.",
             }
         )
+
+
+def test_legitimate_404_mention_accepted() -> None:
+    ReferenceEntry.model_validate(
+        {
+            "source": "glossary_adapter",
+            "source_url": "https://glossary.example.com/terms/idempotency",
+            "source_id": "terms/idempotency",
+            "term": "Idempotency",
+            "definition": (
+                "The upstream service returned error 404 in processing;"
+                " our handler caught it and retried successfully."
+            ),
+        }
+    )
+
+
+def test_404_not_found_still_rejected() -> None:
+    with pytest.raises(ValidationError, match="placeholder/error"):
+        ReferenceEntry.model_validate(
+            {
+                "source": "glossary_adapter",
+                "source_url": "https://glossary.example.com/terms/idempotency",
+                "source_id": "terms/idempotency",
+                "term": "Idempotency",
+                "definition": "404 Not Found — the page you requested does not exist.",
+            }
+        )

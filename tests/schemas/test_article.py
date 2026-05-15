@@ -47,3 +47,33 @@ def test_placeholder_rejected() -> None:
                 "language": "en",
             }
         )
+
+
+def test_legitimate_404_mention_accepted() -> None:
+    Article.model_validate(
+        {
+            "source": "test_adapter",
+            "source_url": "https://example.com/article/test",
+            "source_id": "article/test",
+            "title": "Test Article Title",
+            "body_md": (
+                "The upstream service returned error 404 in processing;"
+                " our handler caught it and retried successfully."
+            ),
+            "language": "en",
+        }
+    )
+
+
+def test_404_not_found_still_rejected() -> None:
+    with pytest.raises(ValidationError, match="placeholder/error"):
+        Article.model_validate(
+            {
+                "source": "test_adapter",
+                "source_url": "https://example.com/article/test",
+                "source_id": "article/test",
+                "title": "Test Article Title",
+                "body_md": "404 Not Found — the page you requested does not exist on this server.",
+                "language": "en",
+            }
+        )
