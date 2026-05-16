@@ -54,3 +54,21 @@ def test_read_trace_for_batch_returns_empty_when_no_file(
 ) -> None:
     monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
     assert read_trace_for_batch("nonexistent-batch") == []
+
+
+def test_autouse_isolation_redirects_to_tmp(tmp_path: Path) -> None:
+    """Guard: confirm the autouse trace-isolation fixture is active and effective.
+
+    Intentionally does NOT call `monkeypatch.setattr` itself — relies entirely
+    on the autouse fixture from `tests/conftest.py`. If that fixture is
+    removed or broken, this test fails before production-path pollution can
+    occur, alerting the maintainer.
+    """
+    expected_dir = tmp_path / "traces"
+    assert (
+        expected_dir == trace_module.TRACE_DIR
+    ), f"autouse trace-isolation fixture inactive: TRACE_DIR={trace_module.TRACE_DIR}"
+    with span("isolation_guard"):
+        pass
+    files = list(expected_dir.glob("*.jsonl"))
+    assert len(files) == 1, f"span() did not write to redirected TRACE_DIR: {files}"
