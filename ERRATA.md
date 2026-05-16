@@ -250,7 +250,6 @@ upsert_canonical(con, source, article.source_id, url,
 {
   "permissions": {
     "allow": [
-      "Bash(python -m src.tools.investigate *)",
       "Bash(sqlite3 data/scraped.db -readonly *)",
       "Bash(pytest tests/**)",
       "Read(src/**)",
@@ -281,7 +280,7 @@ upsert_canonical(con, source, article.source_id, url,
       "Edit(.claude/**)",
       "mcp__firecrawl__firecrawl_crawl"
     ],
-    "defaultMode": "ask"
+    "defaultMode": "default"
   },
   "model": "sonnet"
 }

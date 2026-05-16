@@ -717,7 +717,6 @@ trace_id batch'а.
 {
   "permissions": {
     "allow": [
-      "Bash(python -m src.tools.investigate *)",
       "Bash(sqlite3 data/scraped.db -readonly *)",
       "Bash(pytest tests/**)",
       "Read(src/**)",
@@ -748,13 +747,13 @@ trace_id batch'а.
       "Edit(.claude/**)",
       "mcp__firecrawl__firecrawl_crawl"
     ],
-    "defaultMode": "ask"
+    "defaultMode": "default"
   },
   "model": "sonnet"
 }
 ```
 
-Ключевые отличия от исходной инструкции: `defaultMode: "ask"` вместо `"acceptEdits"`; `Bash(pip install *)` и `Bash(curl *)` явно запрещены (вектор поставки кода и SSRF-канал); правка `src/safety/**`, `src/db/**` и `config/sources.yaml` — только через PR с человеческим review; `firecrawl_crawl` (рекурсивный обход) — запрещён агенту в run-time, его запускают только через явный workflow с лимитами.
+Ключевые отличия от исходной инструкции: `defaultMode: "default"` вместо `"acceptEdits"`; `Bash(pip install *)` и `Bash(curl *)` явно запрещены (вектор поставки кода и SSRF-канал); правка `src/safety/**`, `src/db/**` и `config/sources.yaml` — только через PR с человеческим review; `firecrawl_crawl` (рекурсивный обход) — запрещён агенту в run-time, его запускают только через явный workflow с лимитами.
 
 Запрет `mcp__firecrawl__firecrawl_crawl` касается прямого вызова агентом через MCP-канал. Workflow-код в `src/sources/<domain>.py` имеет право использовать рекурсивный обход через прямой Python-импорт `from firecrawl import Firecrawl` — но только с обязательным `limit`, обёрткой `CostGate` и явным review адаптера в PR. Различение: MCP-вызов — это «агент решает в рантайме»; Python-импорт — это «детерминированный код, который человек прочитал и согласовал».
 
