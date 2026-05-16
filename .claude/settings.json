@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -m src.tools.investigate *)",
       "Bash(sqlite3 data/scraped.db -readonly *)",
       "Bash(pytest tests/**)",
       "Read(src/**)",
