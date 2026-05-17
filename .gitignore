@@ -12,6 +12,7 @@ data/scraped.db
 data/raw/
 data/traces/
 reports/investigations/
+reports/eval-*
 *.egg-info/
 build/
 dist/
