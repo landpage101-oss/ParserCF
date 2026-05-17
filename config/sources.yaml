@@ -8,3 +8,11 @@
   adapter: src/sources/docs_python_org.py
   api_available: false
   api_check_notes: "PSF не предоставляет API для documentation, scrape — единственный путь"
+- domain: developer.mozilla.org
+  added_by: landpage101-oss
+  reviewed_at: 2026-05-17
+  legal_basis: "Mozilla MDN Web Docs, content under CC-BY-SA 2.5; robots.txt allows scraping; no auth required; non-commercial documentation harvest"
+  rate_limit_rps: 1.0
+  adapter: src/sources/developer_mozilla_org.py
+  api_available: false
+  api_check_notes: "mdn/content GitHub repo предназначен для contributing, не для programmatic content consumption; публичного REST/GraphQL API для контента нет"
