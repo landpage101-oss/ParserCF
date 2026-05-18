@@ -168,7 +168,7 @@ class Article(BaseModel):
     @classmethod
     def reject_placeholder(cls, v: str) -> str:
         markers = {"lorem ipsum", "page not found", "access denied",
-                   "404", "403 forbidden", "are you a robot"}
+                   "404 not found", "403 forbidden", "are you a robot"}
         low = v.lower()
         for m in markers:
             if m in low:
