@@ -114,7 +114,7 @@ class Article(BaseModel):
     @classmethod
     def reject_placeholder(cls, v: str) -> str:
         markers = {"lorem ipsum", "page not found", "access denied",
-                   "404", "403 forbidden", "are you a robot"}
+                   "404 not found", "403 forbidden", "are you a robot"}
         low = v.lower()
         for m in markers:
             if m in low:
@@ -132,6 +132,17 @@ class DocsPage(BaseModel):
     body_md: str = Field(min_length=10)
     code_block_count: int = Field(ge=0)
     last_updated: datetime | None = None
+
+    @field_validator("body_md")
+    @classmethod
+    def reject_placeholder(cls, v: str) -> str:
+        markers = {"lorem ipsum", "page not found", "access denied",
+                   "404 not found", "403 forbidden", "are you a robot"}
+        low = v.lower()
+        for m in markers:
+            if m in low:
+                raise ValueError(f"body looks like placeholder/error: '{m}'")
+        return v
 
 
 # src/schemas/product.py
@@ -155,6 +166,19 @@ class Product(BaseModel):
             raise ValueError("price must be > 0 if present")
         return v
 
+    @field_validator("description")
+    @classmethod
+    def reject_placeholder(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        markers = {"lorem ipsum", "page not found", "access denied",
+                   "404 not found", "403 forbidden", "are you a robot"}
+        low = v.lower()
+        for m in markers:
+            if m in low:
+                raise ValueError(f"description looks like placeholder/error: '{m}'")
+        return v
+
 
 # src/schemas/reference.py
 class ReferenceEntry(BaseModel):
@@ -165,6 +189,17 @@ class ReferenceEntry(BaseModel):
     definition: str = Field(min_length=10)
     examples: list[str] = Field(default_factory=list)
     last_updated: datetime | None = None
+
+    @field_validator("definition")
+    @classmethod
+    def reject_placeholder(cls, v: str) -> str:
+        markers = {"lorem ipsum", "page not found", "access denied",
+                   "404 not found", "403 forbidden", "are you a robot"}
+        low = v.lower()
+        for m in markers:
+            if m in low:
+                raise ValueError(f"definition looks like placeholder/error: '{m}'")
+        return v
 ```
 
 ---
