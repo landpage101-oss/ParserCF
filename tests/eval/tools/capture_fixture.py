@@ -43,7 +43,7 @@ def main() -> None:
         md_path = out_dir / f"{spec['id']}.captured.md"
         meta_path = out_dir / f"{spec['id']}.expected.json"
 
-        print(f"[capture] {spec['url']}")  # noqa: T201
+        print(f"[capture] {spec['url']}")
         doc = fc.scrape(spec["url"], formats=["markdown"], only_main_content=True)
         body = getattr(doc, "markdown", "") or ""
         md_path.write_text(body, encoding="utf-8")
@@ -64,7 +64,7 @@ def main() -> None:
                 "expected_validation_status": "ok",
             }
             meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
-            print(f"[stub]   {meta_path} — fill in 'expected_pydantic' manually")  # noqa: T201
+            print(f"[stub]   {meta_path} — fill in 'expected_pydantic' manually")
         else:
             # update content_hash only; leave everything else intact
             existing = json.loads(meta_path.read_text(encoding="utf-8"))
