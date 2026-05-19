@@ -57,9 +57,9 @@ def test_fixture(fixture_pair: tuple[str, Path, Path]) -> None:
     cleaned, warnings = sanitize(raw)
     expected_warns = expected.get("expected_sanitize_warnings", [])
     if expected_warns:
-        assert set(expected_warns).issubset(
-            set(warnings)
-        ), f"sanitize warnings mismatch: got {warnings}, expected >=  {expected_warns}"
+        assert set(expected_warns).issubset(set(warnings)), (
+            f"sanitize warnings mismatch: got {warnings}, expected >=  {expected_warns}"
+        )
 
     # 2. Extraction and validation
     schema_cls = PAGE_TYPE_TO_SCHEMA[expected["page_type"]]
