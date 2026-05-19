@@ -22,7 +22,7 @@ dependencies = [
 dev = [
   "pytest>=8.2",
   "pytest-cov>=5.0",
-  "ruff>=0.6",
+  "ruff>=0.15",
   "mypy>=1.11",
   "types-PyYAML",
   "types-beautifulsoup4",
@@ -42,8 +42,6 @@ target-version = "py312"
 select = ["ALL"]
 ignore = [
   "D",        # pydocstyle - временно отключено, включим в Phase 2
-  "ANN101",   # missing-type-self - устаревшее правило
-  "ANN102",   # missing-type-cls - устаревшее правило
   "COM812",   # trailing-comma - конфликтует с форматтером
   "ISC001",   # implicit-string-concat - конфликтует с форматтером
   "S101",     # assert - разрешено в тестах (см. per-file)
@@ -55,7 +53,7 @@ ignore = [
   "EM102",    # exception must not use f-string literal - same reason
   "TRY003",   # long exception message outside exception class - same reason
   "ANN401",   # dynamically typed Any in **kwargs - correct for generic span attrs
-  "TCH003",   # stdlib imports to TYPE_CHECKING - breaks Pydantic get_type_hints at runtime
+  "TC003",    # stdlib imports to TYPE_CHECKING - breaks Pydantic get_type_hints at runtime
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -65,9 +65,9 @@ def test_autouse_isolation_redirects_to_tmp(tmp_path: Path) -> None:
     occur, alerting the maintainer.
     """
     expected_dir = tmp_path / "traces"
-    assert (
-        expected_dir == trace_module.TRACE_DIR
-    ), f"autouse trace-isolation fixture inactive: TRACE_DIR={trace_module.TRACE_DIR}"
+    assert expected_dir == trace_module.TRACE_DIR, (
+        f"autouse trace-isolation fixture inactive: TRACE_DIR={trace_module.TRACE_DIR}"
+    )
     with span("isolation_guard"):
         pass
     files = list(expected_dir.glob("*.jsonl"))
