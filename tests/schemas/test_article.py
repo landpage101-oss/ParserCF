@@ -77,3 +77,57 @@ def test_404_not_found_still_rejected() -> None:
                 "language": "en",
             }
         )
+
+
+# ── published_at normalisation ────────────────────────────────────────────────
+
+_BASE = {
+    "source": "anthropic_news",
+    "source_url": "https://www.anthropic.com/news/x",
+    "source_id": "x",
+    "title": "T",
+    "body_md": "This is a sufficiently long body for testing the schema.",
+    "language": "en",
+}
+
+
+def _article(**overrides: object) -> Article:
+    return Article.model_validate({**_BASE, **overrides})
+
+
+def test_published_at_human_abbreviated_month() -> None:
+    a = _article(published_at="Feb 17, 2026")
+    assert a.published_at is not None
+    assert (a.published_at.year, a.published_at.month, a.published_at.day) == (2026, 2, 17)
+
+
+def test_published_at_human_full_month() -> None:
+    a = _article(published_at="January 5, 2025")
+    assert a.published_at is not None
+    assert (a.published_at.year, a.published_at.month, a.published_at.day) == (2025, 1, 5)
+
+
+def test_published_at_iso_datetime_passthrough() -> None:
+    # regression guard for eval fixture 01 — must stay exact
+    a = _article(published_at="2026-03-15T00:00:00Z")
+    assert a.published_at is not None
+    assert a.published_at.isoformat().startswith("2026-03-15T00:00:00")
+
+
+def test_published_at_iso_date_only_passthrough() -> None:
+    a = _article(published_at="2023-03-08")
+    assert a.published_at is not None
+    assert (a.published_at.year, a.published_at.month, a.published_at.day) == (2023, 3, 8)
+
+
+def test_published_at_blank_becomes_none() -> None:
+    assert _article(published_at="   ").published_at is None
+
+
+def test_published_at_none_passthrough() -> None:
+    assert _article(published_at=None).published_at is None
+
+
+def test_published_at_unparseable_rejected() -> None:
+    with pytest.raises(ValidationError):
+        _article(published_at="sometime last spring")
