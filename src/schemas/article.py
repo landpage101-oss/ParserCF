@@ -4,6 +4,24 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 _HUMAN_DATE_FORMATS = ("%b %d, %Y", "%B %d, %Y")  # "Feb 17, 2026", "January 5, 2025"
 
+_LANG_NAME_TO_ISO: dict[str, str] = {
+    "english": "en",
+    "french": "fr",
+    "german": "de",
+    "spanish": "es",
+    "italian": "it",
+    "portuguese": "pt",
+    "russian": "ru",
+    "chinese": "zh",
+    "japanese": "ja",
+    "korean": "ko",
+    "arabic": "ar",
+    "dutch": "nl",
+    "polish": "pl",
+    "swedish": "sv",
+    "turkish": "tr",
+}
+
 
 class Article(BaseModel):
     source: str = Field(min_length=1, max_length=64)
@@ -13,7 +31,23 @@ class Article(BaseModel):
     author: str | None = None
     published_at: datetime | None = None
     body_md: str = Field(min_length=10)
-    language: str = Field(pattern=r"^[a-z]{2}$")
+    language: str = Field(
+        pattern=r"^[a-z]{2}$",
+        description="ISO 639-1 two-letter lowercase code, e.g. 'en'",
+    )
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def _normalise_language(cls, v: object) -> object:
+        """Map full language names ('English') to ISO 639-1 ('en').
+
+        Already-valid codes pass through unchanged; unknown values fall
+        through to Pydantic and surface as a visible ValidationError.
+        """
+        if not isinstance(v, str):
+            return v
+        s = v.strip()
+        return _LANG_NAME_TO_ISO.get(s.lower(), s)
 
     @field_validator("published_at", mode="before")
     @classmethod
