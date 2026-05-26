@@ -131,3 +131,23 @@ def test_published_at_none_passthrough() -> None:
 def test_published_at_unparseable_rejected() -> None:
     with pytest.raises(ValidationError):
         _article(published_at="sometime last spring")
+
+
+# ── language normalisation ────────────────────────────────────────────────────
+
+
+def test_language_full_name_english() -> None:
+    assert _article(language="English").language == "en"
+
+
+def test_language_full_name_russian() -> None:
+    assert _article(language="Russian").language == "ru"
+
+
+def test_language_iso_passthrough() -> None:  # regression guard for eval
+    assert _article(language="en").language == "en"
+
+
+def test_language_unknown_name_rejected() -> None:
+    with pytest.raises(ValidationError):
+        _article(language="Esperanto")
