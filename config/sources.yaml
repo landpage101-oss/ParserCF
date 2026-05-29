@@ -16,3 +16,11 @@
   adapter: src/sources/developer_mozilla_org.py
   api_available: false
   api_check_notes: "mdn/content GitHub repo предназначен для contributing, не для programmatic content consumption; публичного REST/GraphQL API для контента нет"
+- domain: www.anthropic.com
+  added_by: landpage101-oss
+  reviewed_at: 2026-05-22
+  legal_basis: "robots.txt Allow: / with no Disallow on /news; org's official public news/announcements"
+  rate_limit_rps: 1.0
+  adapter: src/sources/anthropic_news.py
+  api_available: false
+  api_check_notes: "Community RSS scrapers exist (RSSHub, taobojlen/anthropic-rss-feed); no official news API endpoint."
