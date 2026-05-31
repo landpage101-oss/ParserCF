@@ -58,6 +58,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "PLR2004", "INP001", "SLF001"]
+"scripts/**/*.py" = ["INP001", "T201", "PLC0415"]
 "src/run.py" = ["PLC0415", "PLR0915"]  # load_dotenv inside main(); run() is intentionally long
 "tests/eval/tools/*.py" = ["T201"]  # operator scripts emit progress to stdout; not run in CI
 
