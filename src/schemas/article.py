@@ -28,7 +28,10 @@ class Article(BaseModel):
     source_url: HttpUrl
     source_id: str = Field(min_length=1, max_length=256)
     title: str = Field(min_length=1, max_length=500)
-    author: str | None = None
+    author: str | None = Field(
+        default=None,
+        description="Real human author byline only; organisation-level attribution -> None",
+    )
     published_at: datetime | None = None
     body_md: str = Field(min_length=10)
     language: str = Field(
