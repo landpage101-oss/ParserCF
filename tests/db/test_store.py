@@ -3,11 +3,18 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 
+import src.safety.trace as trace_module
 from src.db.migrate import SCHEMA_PATH
-from src.db.store import append_validation_failure, record_attempt, upsert_canonical
+from src.db.store import (
+    append_validation_failure,
+    record_attempt,
+    resolve_validation_failure,
+    upsert_canonical,
+)
 
 
 @pytest.fixture
@@ -115,6 +122,83 @@ def test_change_history_not_written_when_no_change(con: sqlite3.Connection) -> N
 # ---------------------------------------------------------------------------
 # append_validation_failure
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# resolve_validation_failure
+# ---------------------------------------------------------------------------
+
+
+def _make_vf(con: sqlite3.Connection) -> int:
+    """Helper: insert one raw + one vf record, return vf id."""
+    raw_id = record_attempt(con, "src", "id-vf", "https://x.com/vf", {"x": 1}, "t-vf")
+    append_validation_failure(con, "src", "https://x.com/vf", raw_id, "ValidationError: missing")
+    return con.execute("SELECT id FROM validation_failed WHERE raw_id = ?", (raw_id,)).fetchone()[0]
+
+
+def test_resolve_sets_resolved_at_and_resolution(
+    con: sqlite3.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
+    vf_id = _make_vf(con)
+
+    resolve_validation_failure(con, vf_id, resolution="fixed", reason="schema normaliser added")
+
+    row = con.execute(
+        "SELECT resolved_at, resolution FROM validation_failed WHERE id = ?", (vf_id,)
+    ).fetchone()
+    assert row[0] is not None  # resolved_at set
+    assert row[1] == "fixed"
+
+
+def test_resolve_writes_trace_span(
+    con: sqlite3.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
+    vf_id = _make_vf(con)
+
+    resolve_validation_failure(con, vf_id, resolution="discarded", reason="anti-bot page")
+
+    records = [
+        json.loads(line)
+        for f in tmp_path.glob("*.jsonl")
+        for line in f.read_text().splitlines()
+        if line.strip()
+    ]
+    resolve_spans = [r for r in records if r.get("name") == "resolve_vf"]
+    assert len(resolve_spans) == 1
+    attrs = resolve_spans[0]["attrs"]
+    assert attrs["vf_id"] == vf_id
+    assert attrs["resolution"] == "discarded"
+    assert attrs["reason"] == "anti-bot page"
+
+
+def test_resolve_raises_on_unknown_id(
+    con: sqlite3.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
+    with pytest.raises(ValueError, match="not found"):
+        resolve_validation_failure(con, 9999, resolution="fixed", reason="test")
+
+
+def test_resolve_raises_if_already_resolved(
+    con: sqlite3.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
+    vf_id = _make_vf(con)
+    resolve_validation_failure(con, vf_id, resolution="fixed", reason="first")
+
+    with pytest.raises(ValueError, match="already resolved"):
+        resolve_validation_failure(con, vf_id, resolution="fixed", reason="duplicate")
+
+
+def test_resolve_raises_on_invalid_resolution(
+    con: sqlite3.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_module, "TRACE_DIR", tmp_path)
+    vf_id = _make_vf(con)
+    with pytest.raises(ValueError, match="resolution must be one of"):
+        resolve_validation_failure(con, vf_id, resolution="typo", reason="test")
 
 
 def test_append_validation_failure_writes_record(con: sqlite3.Connection) -> None:
