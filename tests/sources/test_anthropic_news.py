@@ -3,7 +3,7 @@
 from src.sources.anthropic_news import AnthropicNewsAdapter
 
 _URL_PREFIX = "https://www.anthropic.com/news/"
-_EXPECTED_COUNT = 8
+_EXPECTED_COUNT = 19
 
 
 def test_list_urls_returns_seeds() -> None:
