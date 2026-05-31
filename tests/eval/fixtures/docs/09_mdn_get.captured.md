@@ -81,7 +81,7 @@ HTTP/1.1 200 OK
 
 ## [Browser compatibility](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/GET\#browser_compatibility)
 
-[Report problems with this compatibility data](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/GET# "Report an issue with this compatibility data") •
+[Report problems with this compatibility data](https://github.com/mdn/browser-compat-data/issues/new?mdn-url=https%3A%2F%2Fdeveloper.mozilla.org%2Fen-US%2Fdocs%2FWeb%2FHTTP%2FReference%2FMethods%2FGET&metadata=%3C%21--+Do+not+make+changes+below+this+line+--%3E%0A%3Cdetails%3E%0A%3Csummary%3EMDN+page+report+details%3C%2Fsummary%3E%0A%0A*+Query%3A+%60http.methods.GET%60%0A*+Report+started%3A+2026-05-31T20%3A53%3A21.047Z%0A%0A%3C%2Fdetails%3E&title=http.methods.GET+-+%3CSUMMARIZE+THE+PROBLEM%3E&template=data-problem.yml "Report an issue with this compatibility data") •
 [View data on GitHub](https://github.com/mdn/browser-compat-data/tree/main/http/methods.json "File: http/methods.json")
 
 |  | desktop | mobile |

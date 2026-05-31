@@ -1,6 +1,6 @@
 {
   "page_type": "reference",
-  "captured_at": "2026-05-08T15:07:30.814129+00:00",
+  "captured_at": "2026-05-31T19:53:57.268028+00:00",
   "captured_from": "https://arxiv.org/abs/2210.03629",
   "captured_via": "firecrawl_scrape",
   "captured_content_hash": "sha256:b017948049bd8af5f9d321d5936c65e9643d8ecd05e27d8663c692c63eb20122",
@@ -10,7 +10,11 @@
     "source_id": "abs/2210.03629",
     "term_must_contain": "ReAct",
     "definition_min_length": 500,
-    "definition_must_contain": ["reasoning", "acting", "language models"]
+    "definition_must_contain": [
+      "reasoning",
+      "acting",
+      "language models"
+    ]
   },
   "expected_validation_status": "ok"
 }
