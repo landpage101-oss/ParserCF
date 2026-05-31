@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import logging
 import sqlite3
 import sys
 import time
@@ -21,6 +22,8 @@ from src.safety.trace import span
 
 if TYPE_CHECKING:
     from src.sources._base import SourceAdapter
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path("data/scraped.db")
 
@@ -76,7 +79,8 @@ def run(
                     except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
                         # Config errors are NOT transient — fail loud, not circuit breaker quota.
                         raise
-                    except Exception:  # noqa: BLE001 — actual transport/transient errors feed circuit breaker
+                    except Exception:  # actual transport/transient errors feed circuit breaker
+                        logger.exception("fetch failed for %s", url)
                         gate.after_error()
                         counts["errors"] += 1
                         continue

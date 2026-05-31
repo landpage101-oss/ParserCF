@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -36,7 +37,7 @@ _VALID_RAW: dict[str, Any] = {
     "source": "docs.python.org",
     "source_url": "https://docs.python.org/3/library/json.html",
     "source_id": "json",
-    "title": "json — JSON encoder and decoder",
+    "title": "json -- JSON encoder and decoder",
     "section_path": [],
     "body_md": "A standard library module for encoding and decoding JSON data.",
     "code_block_count": 0,
@@ -49,7 +50,7 @@ _INVALID_RAW: dict[str, Any] = {
     "source_id": "json",
     "title": "Error",
     "section_path": [],
-    "body_md": "404 not found — the page you requested does not exist",
+    "body_md": "404 not found -- the page you requested does not exist",
     "code_block_count": 0,
     "last_updated": None,
 }
@@ -93,14 +94,14 @@ def test_run_validation_error_continues(tmp_path: Path, monkeypatch: pytest.Monk
     con = sqlite3.connect(db)
     try:
         (raw_n,) = con.execute("SELECT COUNT(*) FROM raw_content").fetchone()
-        assert raw_n == 1  # raw persisted before validation (append-only invariant)
+        assert raw_n == 1
         (canon_n,) = con.execute("SELECT COUNT(*) FROM canonical_records").fetchone()
         assert canon_n == 0
         (vf_n,) = con.execute("SELECT COUNT(*) FROM validation_failed").fetchone()
         assert vf_n == 1
         raw_id = con.execute("SELECT id FROM raw_content").fetchone()[0]
         vf_raw_id = con.execute("SELECT raw_id FROM validation_failed").fetchone()[0]
-        assert vf_raw_id == raw_id  # FK links failure to its raw record
+        assert vf_raw_id == raw_id
     finally:
         con.close()
 
@@ -133,19 +134,33 @@ def test_run_propagates_config_errors(tmp_path: Path, monkeypatch: pytest.Monkey
         run("docs_python_org", db_path=db)
 
 
-def test_run_overrides_source_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Adapter-provided source/source_id/source_url override Firecrawl-extracted values.
-
-    TODO #8: Firecrawl JSON-mode treats these fields as content; LLM fills them
-    with metadata guesses. They must be overridden with adapter-provided truth.
-    """
+def test_run_transport_error_is_logged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Transport errors must be logged with traceback, not silently swallowed."""
     db = _setup(tmp_path, monkeypatch)
-    # raw with WRONG values for the three identifier fields (as if Firecrawl LLM guessed)
+
+    def _transport_error(_url: str, _pt: str) -> dict[str, Any]:
+        raise ConnectionError("timeout after 30s")
+
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", _transport_error)
+
+    with caplog.at_level(logging.ERROR, logger="src.run"):
+        counts = run("docs_python_org", db_path=db)
+
+    assert counts["errors"] == 1
+    assert counts["canonical"] == 0
+    assert "timeout after 30s" in caplog.text
+
+
+def test_run_overrides_source_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Adapter-provided source/source_id/source_url override Firecrawl-extracted values."""
+    db = _setup(tmp_path, monkeypatch)
     polluted_raw: dict[str, Any] = {
         "source": "WRONG_SOURCE_FROM_LLM_GUESS",
         "source_url": "https://wrong.invalid/llm-guessed-url",
         "source_id": "wrong_source_id",
-        "title": "json — JSON encoder and decoder",
+        "title": "json -- JSON encoder and decoder",
         "section_path": [],
         "body_md": "A standard library module for encoding and decoding JSON data.",
         "code_block_count": 0,
@@ -158,20 +173,17 @@ def test_run_overrides_source_metadata(tmp_path: Path, monkeypatch: pytest.Monke
 
     con = sqlite3.connect(db)
     try:
-        # Table columns: adapter-provided
         row = con.execute("SELECT source, source_id, url FROM canonical_records").fetchone()
         assert row[0] == "docs_python_org"
-        assert row[1] == "json"  # _StubAdapter.parse_id returns URL leaf
+        assert row[1] == "json"
         assert row[2] == "https://docs.python.org/3/library/json.html"
 
-        # Payload fields: must also be adapter-provided after the fix
         payload_row = con.execute("SELECT payload FROM canonical_records").fetchone()
         payload = json.loads(payload_row[0])
         assert payload["source"] == "docs_python_org"
         assert payload["source_id"] == "json"
         assert payload["source_url"] == "https://docs.python.org/3/library/json.html"
 
-        # raw_content persists the normalized (overridden) raw, not the polluted Firecrawl output
         raw_row = con.execute("SELECT raw_payload FROM raw_content").fetchone()
         raw_persisted = json.loads(raw_row[0])
         assert raw_persisted["source"] == "docs_python_org"
