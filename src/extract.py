@@ -49,7 +49,8 @@ def fetch_via_firecrawl(url: str, page_type: str) -> dict[str, object]:
         url,
         formats=[{"type": "json", "schema": schema_cls.model_json_schema()}],
         only_main_content=True,
-        timeout=30000,
+        wait_for=1500,  # wait for JS hydration; prevents truncated body/title (#A)
+        timeout=30000,  # 30 s per attempt; fail fast so our backoff handles retries (#A)
     )
     raw_json: dict[str, object] = getattr(result, "json", None) or {}
     if not raw_json:
