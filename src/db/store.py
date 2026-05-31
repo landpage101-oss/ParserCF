@@ -5,6 +5,8 @@ import json
 import sqlite3
 from datetime import UTC, datetime
 
+from src.safety.trace import span
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -92,3 +94,35 @@ def append_validation_failure(
         """,
         (source, url, raw_id, error, _now_iso()),
     )
+
+
+_VALID_RESOLUTIONS: frozenset[str] = frozenset({"fixed", "discarded", "source_changed"})
+
+
+def resolve_validation_failure(
+    con: sqlite3.Connection,
+    vf_id: int,
+    *,
+    resolution: str,
+    reason: str,
+) -> None:
+    """Mark a validation_failed record as resolved.
+
+    resolution: one of 'fixed', 'discarded', 'source_changed'
+    reason: human-readable explanation — written to trace, not stored in DB
+    """
+    if resolution not in _VALID_RESOLUTIONS:
+        raise ValueError(
+            f"resolution must be one of {sorted(_VALID_RESOLUTIONS)}, got {resolution!r}"
+        )
+    row = con.execute("SELECT resolved_at FROM validation_failed WHERE id = ?", (vf_id,)).fetchone()
+    if row is None:
+        raise ValueError(f"validation_failed id={vf_id} not found")
+    if row[0] is not None:
+        raise ValueError(f"validation_failed id={vf_id} already resolved at {row[0]}")
+
+    with span("resolve_vf", vf_id=vf_id, resolution=resolution, reason=reason):
+        con.execute(
+            "UPDATE validation_failed SET resolved_at = ?, resolution = ? WHERE id = ?",
+            (_now_iso(), resolution, vf_id),
+        )
