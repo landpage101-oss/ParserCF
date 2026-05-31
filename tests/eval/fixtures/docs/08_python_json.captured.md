@@ -8,9 +8,9 @@
 - [Python](https://www.python.org/) »
 - Greek \| ΕλληνικάEnglishSpanish \| españolFrench \| françaisItalian \| italianoJapanese \| 日本語Korean \| 한국어Polish \| polskiBrazilian Portuguese \| Português brasileiroRomanian \| RomâneșteTurkish \| TürkçeSimplified Chinese \| 简体中文Traditional Chinese \| 繁體中文
 
-dev (3.16)pre (3.15)3.14.5rc13.133.123.113.103.93.83.73.63.53.43.33.23.13.02.72.6
+dev (3.16)pre (3.15)3.14.53.133.123.113.103.93.83.73.63.53.43.33.23.13.02.72.6
 
-- [3.14.5rc1 Documentation](https://docs.python.org/3/index.html) »
+- [3.14.5 Documentation](https://docs.python.org/3/index.html) »
 
 - [The Python Standard Library](https://docs.python.org/3/library/index.html) »
 - [Internet Data Handling](https://docs.python.org/3/library/netdata.html) »
@@ -246,7 +246,7 @@ A positive integer indents that many spaces per level;
 a string (such as `"\t"`) is used to indent each level.
 If zero, negative, or `""` (the empty string),
 only newlines are inserted.
-If `None` (the default), the most compact representation is used.
+If `None` (the default), no newlines are inserted.
 
 - **separators** ( [_tuple_](https://docs.python.org/3/library/stdtypes.html#tuple "tuple") _\|_ _None_) – A two-tuple: `(item_separator, key_separator)`.
 If `None` (the default), _separators_ defaults to
@@ -854,9 +854,9 @@ Footnotes
 - [Python](https://www.python.org/) »
 - Greek \| ΕλληνικάEnglishSpanish \| españolFrench \| françaisItalian \| italianoJapanese \| 日本語Korean \| 한국어Polish \| polskiBrazilian Portuguese \| Português brasileiroRomanian \| RomâneșteTurkish \| TürkçeSimplified Chinese \| 简体中文Traditional Chinese \| 繁體中文
 
-dev (3.16)pre (3.15)3.14.5rc13.133.123.113.103.93.83.73.63.53.43.33.23.13.02.72.6
+dev (3.16)pre (3.15)3.14.53.133.123.113.103.93.83.73.63.53.43.33.23.13.02.72.6
 
-- [3.14.5rc1 Documentation](https://docs.python.org/3/index.html) »
+- [3.14.5 Documentation](https://docs.python.org/3/index.html) »
 
 - [The Python Standard Library](https://docs.python.org/3/library/index.html) »
 - [Internet Data Handling](https://docs.python.org/3/library/netdata.html) »
