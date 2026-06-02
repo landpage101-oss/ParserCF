@@ -22,3 +22,7 @@ venv/
 .vscode/
 *.swp
 .DS_Store
+
+# discovery-script outputs (regenerable, see scripts/discover_*.py)
+scripts/discovered_*.txt
+scripts/check_mdn_state.py

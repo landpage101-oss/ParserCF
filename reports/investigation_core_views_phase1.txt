@@ -1,0 +1,48 @@
+2026-05-31 11:49:46,293 DEBUG firecrawl: Debugging logger setup
+2026-05-31 11:49:47,006 DEBUG firecrawl: Initialized V1FirecrawlApp with API URL: https://api.firecrawl.dev
+2026-05-31 11:49:47,017 DEBUG urllib3.connectionpool: Starting new HTTPS connection (1): api.firecrawl.dev:443
+2026-05-31 11:51:47,911 DEBUG urllib3.connectionpool: https://api.firecrawl.dev:443 "POST /v2/scrape HTTP/1.1" 408 557
+2026-05-31 11:51:52,913 DEBUG urllib3.connectionpool: Starting new HTTPS connection (1): api.firecrawl.dev:443
+2026-05-31 11:53:23,341 DEBUG urllib3.connectionpool: https://api.firecrawl.dev:443 "POST /v2/scrape HTTP/1.1" 200 45322
+2026-05-31 11:53:28,539 DEBUG urllib3.connectionpool: Starting new HTTPS connection (1): api.firecrawl.dev:443
+2026-05-31 11:53:37,609 DEBUG urllib3.connectionpool: https://api.firecrawl.dev:443 "POST /v2/scrape HTTP/1.1" 200 6052
+2026-05-31 11:53:42,611 DEBUG urllib3.connectionpool: Starting new HTTPS connection (1): api.firecrawl.dev:443
+2026-05-31 11:53:55,679 DEBUG urllib3.connectionpool: https://api.firecrawl.dev:443 "POST /v2/scrape HTTP/1.1" 200 6038
+2026-05-31 11:54:00,682 DEBUG urllib3.connectionpool: Starting new HTTPS connection (1): api.firecrawl.dev:443
+2026-05-31 11:54:14,062 DEBUG urllib3.connectionpool: https://api.firecrawl.dev:443 "POST /v2/scrape HTTP/1.1" 200 6071
+
+============================================================
+Run 1/5  url=https://www.anthropic.com/news/core-views-on-ai-safety
+  FAIL  elapsed=120.9s  RequestTimeoutError: Request Timeout: Failed to scrape as the request timed out. The scrape operation timed out before completing. This happens when a page takes too long to load, render, or process. Possible causes: (1) The website is slow or unresponsive, (2) The page has heavy JavaScript that takes time to execute, (3) The page is very large or has many resources to load, (4) Network latency is high. To fix this, try increasing the timeout parameter in your scrape request, or if using actions, ensure your selectors are correct and the page is ready before actions are executed. - No additional error details provided.
+  sleeping 5s before next run...
+
+============================================================
+Run 2/5  url=https://www.anthropic.com/news/core-views-on-ai-safety
+  OK  elapsed=90.6s  title='Core Views on AI Safety: When, Why, What, and How'  body_len=42264  keys=['source', 'source_url', 'source_id', 'title', 'author', 'published_at', 'body_md', 'language']
+  sleeping 5s before next run...
+
+============================================================
+Run 3/5  url=https://www.anthropic.com/news/core-views-on-ai-safety
+  OK  elapsed=9.1s  title='Core Views on AI Safety: When, Why, What, and How'  body_len=3392  keys=['source', 'source_url', 'source_id', 'title', 'author', 'published_at', 'body_md', 'language']
+  sleeping 5s before next run...
+
+============================================================
+Run 4/5  url=https://www.anthropic.com/news/core-views-on-ai-safety
+  OK  elapsed=13.1s  title='Core Views on AI Safety: When, Why, What, and How'  body_len=3394  keys=['source', 'source_url', 'source_id', 'title', 'author', 'published_at', 'body_md', 'language']
+  sleeping 5s before next run...
+
+============================================================
+Run 5/5  url=https://www.anthropic.com/news/core-views-on-ai-safety
+  OK  elapsed=13.4s  title='Core Views on AI Safety: When, Why, What, and How'  body_len=3392  keys=['source', 'source_url', 'source_id', 'title', 'author', 'published_at', 'body_md', 'language']
+
+============================================================
+SUMMARY
+  4/5 OK,  1/5 FAIL
+  run 1: FAIL  120.9s  RequestTimeoutError: Request Timeout: Failed to scrape as the request timed out. The scrape operation timed out before completing. This happens when a page takes too long to load, render, or process. Possible causes: (1) The website is slow or unresponsive, (2) The page has heavy JavaScript that takes time to execute, (3) The page is very large or has many resources to load, (4) Network latency is high. To fix this, try increasing the timeout parameter in your scrape request, or if using actions, ensure your selectors are correct and the page is ready before actions are executed. - No additional error details provided.
+  run 2: OK  90.6s  title='Core Views on AI Safety: When, Why, What, and How'
+  run 3: OK  9.1s  title='Core Views on AI Safety: When, Why, What, and How'
+  run 4: OK  13.1s  title='Core Views on AI Safety: When, Why, What, and How'
+  run 5: OK  13.4s  title='Core Views on AI Safety: When, Why, What, and How'
+
+CONCLUSION: intermittent — flaky CDN or SDK timeout on long page
+  Next step: check elapsed on failures — if ~30s or ~120s, confirm SDK retry count
