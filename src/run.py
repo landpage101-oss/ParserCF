@@ -8,6 +8,7 @@ import logging
 import sqlite3
 import sys
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,12 @@ from pydantic import ValidationError
 
 from src.compliance.robots import is_allowed
 from src.compliance.sources_config import SourceConfig, load_sources
-from src.db.store import append_validation_failure, record_attempt, upsert_canonical
+from src.db.store import (
+    append_validation_failure,
+    get_last_scraped_at,
+    record_attempt,
+    upsert_canonical,
+)
 from src.extract import fetch_via_firecrawl, validate_extracted
 from src.safety.cost import CostBudget, CostGate
 from src.safety.trace import span
@@ -40,12 +46,43 @@ def _load_adapter(source_name: str) -> SourceAdapter:
     return adapter_cls()  # type: ignore[no-any-return]
 
 
+def _is_fresh(
+    con: sqlite3.Connection,
+    source: str,
+    source_id: str,
+    url: str,
+    max_age_days: int,
+    *,
+    force: bool,
+) -> bool:
+    """Return True when the canonical record is younger than max_age_days and force is off."""
+    if force:
+        return False
+    last_scraped = get_last_scraped_at(con, source, source_id)
+    if last_scraped is None:
+        return False
+    age = datetime.now(UTC) - last_scraped
+    if age > timedelta(days=max_age_days):
+        return False
+    logger.info(
+        "skip-fresh: %s (source_id=%s, last_scraped=%s, age_days=%.2f, threshold_days=%d)",
+        url,
+        source_id,
+        last_scraped.isoformat(),
+        age.total_seconds() / 86400,
+        max_age_days,
+    )
+    return True
+
+
 def run(
     source: str,
     *,
     since: str | None = None,
     max_credits: int = 100,
     max_iterations: int = 200,
+    max_age_days: int = 7,
+    force: bool = False,
     db_path: Path = DB_PATH,
 ) -> dict[str, int]:
     """Run a batch. Returns summary counts."""
@@ -56,20 +93,34 @@ def run(
 
     adapter = _load_adapter(source)
     gate = CostGate(CostBudget(max_credits_per_run=max_credits))
-    counts = {"canonical": 0, "validation_failed": 0, "skipped_robots": 0, "errors": 0}
+    counts = {
+        "canonical": 0,
+        "validation_failed": 0,
+        "skipped_robots": 0,
+        "errors": 0,
+        "skipped_fresh": 0,
+    }
 
     con = sqlite3.connect(db_path)
     root_span_id: str | None = None
+    iterated_count = 0
     try:
         with span("batch", source=source) as root:
             root_span_id = root["span_id"]
             for i, url in enumerate(adapter.list_urls(since)):
                 if i >= max_iterations:
                     break
+                iterated_count += 1
                 allowed, delay = is_allowed(url)
                 if not allowed:
                     counts["skipped_robots"] += 1
                     continue
+
+                source_id_for_check = adapter.parse_id(url)
+                if _is_fresh(con, source, source_id_for_check, url, max_age_days, force=force):
+                    counts["skipped_fresh"] += 1
+                    continue
+
                 if delay is not None:
                     time.sleep(delay)
                 with span("scrape", parent_id=root["span_id"], url=url) as s:
@@ -114,6 +165,10 @@ def run(
     finally:
         con.close()
 
+    total = sum(counts.values())
+    assert total == iterated_count, (
+        f"counts mismatch: sum(counts)={total}, iterated_urls={iterated_count}, counts={counts}"
+    )
     print(  # noqa: T201
         f"batch done: {counts}, credits_used={gate.credits_used}, root_span_id={root_span_id}"
     )
@@ -126,6 +181,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--since", default=None)
     parser.add_argument("--max-credits", type=int, default=100)
     parser.add_argument("--max-iterations", type=int, default=200)
+    parser.add_argument(
+        "--max-age-days",
+        type=int,
+        default=7,
+        help="Skip URLs with canonical record younger than N days (default 7)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Disable skip-if-fresh; re-scrape all URLs regardless of age",
+    )
     return parser.parse_args(argv)
 
 
@@ -142,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
         since=args.since,
         max_credits=args.max_credits,
         max_iterations=args.max_iterations,
+        max_age_days=args.max_age_days,
+        force=args.force,
     )
     return 0 if counts["errors"] == 0 else 1
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,8 @@ class _StubAdapter:
         return url.rsplit("/", maxsplit=1)[-1].removesuffix(".html")
 
 
+_STUB_URL = "https://docs.python.org/3/library/json.html"
+
 _VALID_RAW: dict[str, Any] = {
     "source": "docs.python.org",
     "source_url": "https://docs.python.org/3/library/json.html",
@@ -54,6 +57,27 @@ _INVALID_RAW: dict[str, Any] = {
     "code_block_count": 0,
     "last_updated": None,
 }
+
+
+def _seed_canonical(db: Path, source: str, source_id: str, url: str, age_days: float) -> None:
+    """Insert a canonical record whose backing raw_content.scraped_at is N days ago."""
+    ts = (datetime.now(UTC) - timedelta(days=age_days)).isoformat()
+    con = sqlite3.connect(db)
+    try:
+        con.execute(
+            "INSERT INTO raw_content (source, source_id, url, content_hash, "
+            "raw_payload, scraped_at, trace_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (source, source_id, url, "fake-hash", "{}", ts, "seed-trace"),
+        )
+        raw_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+        con.execute(
+            "INSERT INTO canonical_records (source, source_id, url, payload, "
+            "valid_from, raw_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (source, source_id, url, "{}", ts, raw_id),
+        )
+        con.commit()
+    finally:
+        con.close()
 
 
 def _setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -191,3 +215,78 @@ def test_run_overrides_source_metadata(tmp_path: Path, monkeypatch: pytest.Monke
         assert raw_persisted["source_url"] == "https://docs.python.org/3/library/json.html"
     finally:
         con.close()
+
+
+# ---------------------------------------------------------------------------
+# skip-if-fresh
+# ---------------------------------------------------------------------------
+
+
+def test_run_skips_fresh_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db = _setup(tmp_path, monkeypatch)
+    _seed_canonical(db, "docs_python_org", "json", _STUB_URL, age_days=1.0)
+    fetch_called: list[str] = []
+    monkeypatch.setattr(
+        "src.run.fetch_via_firecrawl",
+        lambda url, _pt: (fetch_called.append(url), _VALID_RAW)[1],
+    )
+
+    counts = run("docs_python_org", db_path=db, max_age_days=7)
+
+    assert counts["skipped_fresh"] == 1
+    assert counts["canonical"] == 0
+    assert fetch_called == []
+
+
+def test_run_processes_stale_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db = _setup(tmp_path, monkeypatch)
+    _seed_canonical(db, "docs_python_org", "json", _STUB_URL, age_days=30.0)
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", lambda _u, _p: _VALID_RAW)
+
+    counts = run("docs_python_org", db_path=db, max_age_days=7)
+
+    assert counts["skipped_fresh"] == 0
+    assert counts["canonical"] == 1
+
+
+def test_run_processes_when_no_canonical(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db = _setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", lambda _u, _p: _VALID_RAW)
+
+    counts = run("docs_python_org", db_path=db, max_age_days=7)
+
+    assert counts["skipped_fresh"] == 0
+    assert counts["canonical"] == 1
+
+
+def test_run_force_flag_bypasses_skip_fresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _setup(tmp_path, monkeypatch)
+    _seed_canonical(db, "docs_python_org", "json", _STUB_URL, age_days=1.0)
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", lambda _u, _p: _VALID_RAW)
+
+    counts = run("docs_python_org", db_path=db, max_age_days=7, force=True)
+
+    assert counts["skipped_fresh"] == 0
+    assert counts["canonical"] == 1
+
+
+def test_run_invariant_holds_across_buckets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """sum(counts.values()) == iterated_urls — sanity that classification is exhaustive."""
+    db = _setup(tmp_path, monkeypatch)
+    urls = [
+        "https://docs.python.org/3/library/json.html",  # fresh → skipped
+        "https://docs.python.org/3/library/os.html",  # stale → canonical
+    ]
+    monkeypatch.setattr("src.run._load_adapter", lambda _name: _StubAdapter(urls=urls))
+    _seed_canonical(db, "docs_python_org", "json", urls[0], age_days=1.0)
+    monkeypatch.setattr("src.run.fetch_via_firecrawl", lambda _u, _p: _VALID_RAW)
+
+    counts = run("docs_python_org", db_path=db, max_age_days=7)
+
+    assert sum(counts.values()) == 2
+    assert counts["skipped_fresh"] == 1
+    assert counts["canonical"] == 1
