@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ import src.safety.trace as trace_module
 from src.db.migrate import SCHEMA_PATH
 from src.db.store import (
     append_validation_failure,
+    get_last_scraped_at,
     record_attempt,
     resolve_validation_failure,
     upsert_canonical,
@@ -214,3 +216,42 @@ def test_append_validation_failure_writes_record(con: sqlite3.Connection) -> Non
     assert row[0] == "src"
     assert row[2] == raw_id
     assert "ValidationError" in row[3]
+
+
+# ---------------------------------------------------------------------------
+# get_last_scraped_at
+# ---------------------------------------------------------------------------
+
+
+def test_get_last_scraped_at_returns_none_for_unknown(con: sqlite3.Connection) -> None:
+    result = get_last_scraped_at(con, "src", "id-missing")
+    assert result is None
+
+
+def test_get_last_scraped_at_returns_tz_aware_datetime(con: sqlite3.Connection) -> None:
+    raw_id = record_attempt(con, "src", "id-fresh", "https://x.com/fresh", {"a": 1}, "t-fresh")
+    upsert_canonical(con, "src", "id-fresh", "https://x.com/fresh", {"a": 1}, raw_id)
+
+    result = get_last_scraped_at(con, "src", "id-fresh")
+
+    assert result is not None
+    assert result.tzinfo is not None
+    expected_iso = con.execute(
+        "SELECT scraped_at FROM raw_content WHERE id = ?", (raw_id,)
+    ).fetchone()[0]
+    assert result == datetime.fromisoformat(expected_iso)
+
+
+def test_get_last_scraped_at_reflects_re_scrape(con: sqlite3.Connection) -> None:
+    raw_id1 = record_attempt(con, "src", "id-rescr", "https://x.com/rescr", {"a": 1}, "t-rescr-a")
+    upsert_canonical(con, "src", "id-rescr", "https://x.com/rescr", {"a": 1}, raw_id1)
+
+    raw_id2 = record_attempt(con, "src", "id-rescr", "https://x.com/rescr", {"a": 2}, "t-rescr-b")
+    upsert_canonical(con, "src", "id-rescr", "https://x.com/rescr", {"a": 2}, raw_id2)
+
+    result = get_last_scraped_at(con, "src", "id-rescr")
+
+    expected_iso = con.execute(
+        "SELECT scraped_at FROM raw_content WHERE id = ?", (raw_id2,)
+    ).fetchone()[0]
+    assert result == datetime.fromisoformat(expected_iso)

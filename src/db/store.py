@@ -80,6 +80,34 @@ def upsert_canonical(
     )
 
 
+def get_last_scraped_at(
+    con: sqlite3.Connection,
+    source: str,
+    source_id: str,
+) -> datetime | None:
+    """Return scraped_at (tz-aware UTC) of the raw_content row backing the canonical
+    record for (source, source_id), or None.
+
+    Read-only. Freshness signal for run.py incremental refresh: scraped_at on
+    raw_content reflects the actual fetch time. upsert_canonical overwrites
+    raw_id on re-scrape, so the JOIN naturally returns the latest fetch.
+    """
+    row = con.execute(
+        "SELECT r.scraped_at "
+        "FROM canonical_records c "
+        "JOIN raw_content r ON r.id = c.raw_id "
+        "WHERE c.source = ? AND c.source_id = ? "
+        "LIMIT 1",
+        (source, source_id),
+    ).fetchone()
+    if row is None:
+        return None
+    dt = datetime.fromisoformat(row[0])
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
+
+
 def append_validation_failure(
     con: sqlite3.Connection,
     source: str,
