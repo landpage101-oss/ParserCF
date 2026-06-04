@@ -82,6 +82,12 @@
 
 15. **`assert` для invariants в `src/` — допустимо когда:** ruff `S101` не включён для `src/` + удерживание C901 на лимите критично + инвариант — sanity-check (нарушение = баг кода, не данных). Caveat: стрипуется под `python -O` (в проектах с plain `python -m src.run` — не проблема). Phase 5 example: `assert sum(counts.values()) == iterated_count` в `run.py` (закрывает counts-misclassification + не толкает C901 за 10). Альтернатива (`if/raise RuntimeError`) — лучше когда `-O` в проде или когда инвариант данных, не кода.
 
+16. **Data migration порядок: PR merge first, SQL after, без batch между ними.** При переименовании `source_id` в `canonical_records` (Phase 6: CSS normalization): если запустить batch до migration, `parse_id` вернёт новые IDs, которых нет в DB → лишние re-scrape + сироты. Если migration до PR → batch со старыми seeds создаст новые OLD-записи, конфликтующие с мигрированными. Правильный порядок: merge PR → сразу SQL migration → verify `check_db_state` → только потом batch. `raw_content` и `change_history` при переименовании source_id не трогать — аудит.
+
+17. **PowerShell не поддерживает bash here-string (`<< '@'...'@'`).** Для многострочного Python в PS: сохранить в временный файл в `scripts/` и запустить `python scripts/<name>.py` из корня репо. CWD critical: relative paths (`data/scraped.db`) ищутся от CWD, не от расположения скрипта.
+
+18. **`.gitattributes` с `* text=auto eol=lf` — репо-уровневое решение CRLF.** Устраняет phantom-дифф на Windows для всех контрибьюторов независимо от их `core.autocrlf`. При добавлении: `git add .gitattributes && git add --renormalize .` — renormalize применяет правила к уже отслеживаемым файлам. Если рабочее дерево уже чистое (после `core.autocrlf=true` + `git checkout -- .`), renormalize не даст дополнительного diff в staged. Phase 6: закрыло TODO #5.
+
 ## Поведение при ошибках в batch
 
 - 429 / rate limit → exponential backoff с full jitter (`src/safety/cost.py`).
@@ -98,7 +104,9 @@
 
 **После push + merge** → стандартный cleanup на Windows: `git checkout main && git pull --ff-only && git branch -d <feature> && git fetch --prune`. `-d` (safe) откажет если ветка не merged — это safety net.
 
-**Нужен diagnostic** → предложи изолированный Python snippet (here-string + `python -`) или read-only sqlite-запрос. Уже есть generic diag tool: `python scripts/check_db_state.py --source <name> [--show-ids]` (добавлен в Phase 4). Никаких модификаций без отдельного PR.
+**Нужен diagnostic** → предложи изолированный Python snippet (здесь — через временный файл в `scripts/`, PowerShell не поддерживает bash here-string) или read-only sqlite-запрос. Уже есть generic diag tool: `python scripts/check_db_state.py --source <name> [--show-ids]` (добавлен в Phase 4). Никаких модификаций без отдельного PR.
+
+**Resolution очереди `validation_failed` через CLI** → `python scripts/resolve_vf.py --vf-id N --resolution <fixed|discarded|source_changed> --reason "..."` (добавлен в Phase 6). `--dry-run` — показ без записи. Заменяет разовые `resolve_vf<N>.py`.
 
 **Подозрение на stale-state** (числа не сходятся, паста выглядит обрезанной, narrative противоречивый) → не двигайся дальше, требуй свежий authoritative источник.
 
@@ -113,8 +121,9 @@
 Для онбординга в новые Project-разговоры загрузи из репо:
 
 1. **Top-level `CLAUDE.md`** — project-level правила для Claude Code, плюс `@`-импорт `.claude/rules/{onboard-source,investigate-failed,query}.md` (определения run-time агентских ролей).
-2. **Последний** `HANDOFF_PHASE<n>_COMPLETE.md` — авторитативный снапшот текущего состояния (DB-counts, baseline, открытые TODO). На момент этого обновления: **`HANDOFF_PHASE5_COMPLETE.md`** (80 canonical, MDN 34 / Python 27 / Anthropic 19; полное покрытие MDN seed-листа). Обновляй ссылку при закрытии каждого major-цикла.
+2. **Последний** `HANDOFF_PHASE<n>_COMPLETE.md` — авторитативный снапшот текущего состояния (DB-counts, baseline, открытые TODO). На момент этого обновления: **`HANDOFF_PHASE6_COMPLETE.md`** (80 canonical, MDN 34 / Python 27 / Anthropic 19; все TODO Phase 5 закрыты). Обновляй ссылку при закрытии каждого major-цикла.
 3. Архивные handoff'ы по убыванию давности — для исторического контекста архитектуры, ролей, запретов:
+   - `HANDOFF_PHASE5_COMPLETE.md` — incremental refresh, content-aware placeholder validator, MDN полное покрытие 34 seeds.
    - `HANDOFF_PHASE4_COMPLETE.md` — MDN seeds 8 → 34, eval cron flake fix (`capture_fixture` idempotent), phase-3 artefacts archive, `scripts/check_db_state.py` diag tool.
    - `HANDOFF_PHASE3_COMPLETE.md` — закрытие TODO #A–#E (transport logging, wait_for, resolve_validation_failure, author description, anthropic+python seeds).
    - `HANDOFF_PHASE2_*_COMPLETE.md`, `HANDOFF_PHASE2_MIDPOINT.md`, `HANDOFF_PHASE2.md`.
