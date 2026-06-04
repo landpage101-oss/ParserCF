@@ -80,6 +80,26 @@ def test_404_not_found_still_rejected() -> None:
         )
 
 
+def test_legitimate_long_content_with_marker_accepted() -> None:
+    """Regression: long description mentioning error-state phrases is not a placeholder."""
+    long_description = (
+        "The HTTP 404 Not Found client error response status code indicates "
+        "that the server cannot find the requested resource. A 404 status only "
+        "indicates that the resource is missing. " * 10
+    )
+    assert len(long_description) >= 500
+    Product.model_validate(
+        {
+            "source": "shop_adapter",
+            "source_url": "https://shop.example.com/products/http-guide",
+            "source_id": "products/http-guide",
+            "name": "HTTP Error Guide",
+            "in_stock": True,
+            "description": long_description,
+        }
+    )
+
+
 def test_zero_or_negative_price_rejected() -> None:
     with pytest.raises(ValidationError, match="price must be > 0"):
         Product.model_validate(

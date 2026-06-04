@@ -79,6 +79,26 @@ def test_404_not_found_still_rejected() -> None:
         )
 
 
+def test_legitimate_long_content_with_marker_accepted() -> None:
+    """Regression: long article body mentioning error-state phrases is not a placeholder."""
+    long_body = (
+        "The HTTP 404 Not Found client error response status code indicates "
+        "that the server cannot find the requested resource. A 404 status only "
+        "indicates that the resource is missing. " * 10
+    )
+    assert len(long_body) >= 500
+    Article.model_validate(
+        {
+            "source": "test_adapter",
+            "source_url": "https://example.com/article/http-errors",
+            "source_id": "article/http-errors",
+            "title": "HTTP Error Codes",
+            "body_md": long_body,
+            "language": "en",
+        }
+    )
+
+
 # ── published_at normalisation ────────────────────────────────────────────────
 
 _BASE = {
