@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
+from src.schemas._validators import detect_placeholder_marker
+
 _HUMAN_DATE_FORMATS = ("%b %d, %Y", "%B %d, %Y")  # "Feb 17, 2026", "January 5, 2025"
 
 _LANG_NAME_TO_ISO: dict[str, str] = {
@@ -77,16 +79,7 @@ class Article(BaseModel):
     @field_validator("body_md")
     @classmethod
     def reject_placeholder(cls, v: str) -> str:
-        markers = {
-            "lorem ipsum",
-            "page not found",
-            "access denied",
-            "404 not found",
-            "403 forbidden",
-            "are you a robot",
-        }
-        low = v.lower()
-        for m in markers:
-            if m in low:
-                raise ValueError(f"body looks like placeholder/error: '{m}'")
+        marker = detect_placeholder_marker(v)
+        if marker is not None:
+            raise ValueError(f"body looks like placeholder/error: '{marker}'")
         return v

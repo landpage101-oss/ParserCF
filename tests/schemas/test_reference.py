@@ -77,3 +77,22 @@ def test_404_not_found_still_rejected() -> None:
                 "definition": "404 Not Found — the page you requested does not exist.",
             }
         )
+
+
+def test_legitimate_long_content_with_marker_accepted() -> None:
+    """Regression: long definition mentioning error-state phrases is not a placeholder."""
+    long_definition = (
+        "The HTTP 404 Not Found client error response status code indicates "
+        "that the server cannot find the requested resource. A 404 status only "
+        "indicates that the resource is missing. " * 10
+    )
+    assert len(long_definition) >= 500
+    ReferenceEntry.model_validate(
+        {
+            "source": "glossary_adapter",
+            "source_url": "https://glossary.example.com/terms/http-404",
+            "source_id": "terms/http-404",
+            "term": "HTTP 404",
+            "definition": long_definition,
+        }
+    )

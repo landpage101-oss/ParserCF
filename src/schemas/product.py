@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
+from src.schemas._validators import detect_placeholder_marker
+
 
 class Product(BaseModel):
     source: str = Field(min_length=1, max_length=64)
@@ -26,16 +28,7 @@ class Product(BaseModel):
     def reject_placeholder(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        markers = {
-            "lorem ipsum",
-            "page not found",
-            "access denied",
-            "404 not found",
-            "403 forbidden",
-            "are you a robot",
-        }
-        low = v.lower()
-        for m in markers:
-            if m in low:
-                raise ValueError(f"description looks like placeholder/error: '{m}'")
+        marker = detect_placeholder_marker(v)
+        if marker is not None:
+            raise ValueError(f"description looks like placeholder/error: '{marker}'")
         return v
