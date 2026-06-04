@@ -11,10 +11,8 @@ def test_list_urls_returns_seeds() -> None:
 def test_parse_id_strips_prefix_and_extension() -> None:
     adapter = DeveloperMozillaOrgAdapter()
     assert (
-        adapter.parse_id(
-            "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/z-index"
-        )
-        == "Web/CSS/Reference/Properties/z-index"
+        adapter.parse_id("https://developer.mozilla.org/en-US/docs/Web/CSS/z-index")
+        == "Web/CSS/z-index"
     )
     assert (
         adapter.parse_id(

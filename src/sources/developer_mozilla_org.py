@@ -6,9 +6,9 @@ _BASE = "https://developer.mozilla.org/en-US/docs/"
 
 _SEEDS = [
     # CSS Properties
-    _BASE + "Web/CSS/Reference/Properties/z-index",
-    _BASE + "Web/CSS/Reference/Properties/flex-wrap",
-    _BASE + "Web/CSS/Reference/Properties/justify-content",
+    _BASE + "Web/CSS/z-index",
+    _BASE + "Web/CSS/flex-wrap",
+    _BASE + "Web/CSS/justify-content",
     _BASE + "Web/CSS/display",
     _BASE + "Web/CSS/position",
     _BASE + "Web/CSS/grid-template-columns",
