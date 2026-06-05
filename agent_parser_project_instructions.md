@@ -88,6 +88,10 @@
 
 18. **`.gitattributes` с `* text=auto eol=lf` — репо-уровневое решение CRLF.** Устраняет phantom-дифф на Windows для всех контрибьюторов независимо от их `core.autocrlf`. При добавлении: `git add .gitattributes && git add --renormalize .` — renormalize применяет правила к уже отслеживаемым файлам. Если рабочее дерево уже чистое (после `core.autocrlf=true` + `git checkout -- .`), renormalize не даст дополнительного diff в staged. Phase 6: закрыло TODO #5.
 
+19. **robots.txt Allow ≠ ToS разрешение.** При onboard-source оба документа обязательны независимо. Пример: `openai.com` — robots.txt `Allow: /`, но ToS явно запрещает «automatically or programmatically extract data» применительно к сайтам OpenAI. ToS имеет приоритет над robots.txt. Проверять ToS отдельно по каждому домену, особенно для корпоративных сайтов с AI-продуктами.
+
+20. **Shopify-магазины и сайты с публичным product JSON API — HTTP-адаптер, не Firecrawl.** Если у источника есть `GET /products/{handle}.json`, `GET /collections/{handle}/products.json` или UCP/MCP endpoint (`/api/ucp/mcp`) — scrape через Firecrawl нарушает принцип «API first». Признаки: robots.txt с комментарием про Shopify/UCP, наличие `/agents.md` с задокументированными endpoint'ами. Правильный путь: HTTP-адаптер без Firecrawl на основе `_http_base.py` (TODO #8, не реализован). До готовности `_http_base.py` такие источники не онбордятся. Пример: `jovianarchive.com` — Shopify с полным product JSON API и UCP/MCP.
+
 ## Поведение при ошибках в batch
 
 - 429 / rate limit → exponential backoff с full jitter (`src/safety/cost.py`).
@@ -121,8 +125,9 @@
 Для онбординга в новые Project-разговоры загрузи из репо:
 
 1. **Top-level `CLAUDE.md`** — project-level правила для Claude Code, плюс `@`-импорт `.claude/rules/{onboard-source,investigate-failed,query}.md` (определения run-time агентских ролей).
-2. **Последний** `HANDOFF_PHASE<n>_COMPLETE.md` — авторитативный снапшот текущего состояния (DB-counts, baseline, открытые TODO). На момент этого обновления: **`HANDOFF_PHASE6_COMPLETE.md`** (80 canonical, MDN 34 / Python 27 / Anthropic 19; все TODO Phase 5 закрыты). Обновляй ссылку при закрытии каждого major-цикла.
+2. **Последний** `HANDOFF_PHASE<n>_COMPLETE.md` — авторитативный снапшот текущего состояния (DB-counts, baseline, открытые TODO). На момент этого обновления: **`HANDOFF_PHASE7_COMPLETE.md`** (86 canonical, MDN 34 / Python 27 / Anthropic 19 / ScrapethisSite 6; TODO #3 открыт, TODO #8 новый). Обновляй ссылку при закрытии каждого major-цикла.
 3. Архивные handoff'ы по убыванию давности — для исторического контекста архитектуры, ролей, запретов:
+   - `HANDOFF_PHASE6_COMPLETE.md` — CSS source_id normalization, generic `resolve_vf.py`, `.gitattributes` CRLF fix.
    - `HANDOFF_PHASE5_COMPLETE.md` — incremental refresh, content-aware placeholder validator, MDN полное покрытие 34 seeds.
    - `HANDOFF_PHASE4_COMPLETE.md` — MDN seeds 8 → 34, eval cron flake fix (`capture_fixture` idempotent), phase-3 artefacts archive, `scripts/check_db_state.py` diag tool.
    - `HANDOFF_PHASE3_COMPLETE.md` — закрытие TODO #A–#E (transport logging, wait_for, resolve_validation_failure, author description, anthropic+python seeds).
