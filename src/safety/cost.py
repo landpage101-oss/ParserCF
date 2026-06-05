@@ -8,12 +8,14 @@ class CostBudget:
     max_credits_per_run: int = 100
     max_iterations: int = 50
     max_consecutive_errors: int = 3
+    max_http_calls_per_run: int = 200
 
 
 class CostGate:
     def __init__(self, budget: CostBudget) -> None:
         self.budget = budget
         self.credits_used: int = 0
+        self.http_calls_used: int = 0
         self.iterations: int = 0
         self.consecutive_errors: int = 0
 
@@ -33,6 +35,19 @@ class CostGate:
     def after_error(self) -> None:
         self.iterations += 1
         self.consecutive_errors += 1
+
+    def before_http_call(self) -> None:
+        if self.http_calls_used + 1 > self.budget.max_http_calls_per_run:
+            raise RuntimeError("HTTP cap reached")
+        if self.iterations >= self.budget.max_iterations:
+            raise RuntimeError("iteration cap reached")
+        if self.consecutive_errors >= self.budget.max_consecutive_errors:
+            raise RuntimeError("circuit breaker tripped")
+
+    def after_http_success(self) -> None:
+        self.http_calls_used += 1
+        self.iterations += 1
+        self.consecutive_errors = 0
 
     @contextmanager
     def guard(self, cost: int) -> Generator[None, None, None]:
