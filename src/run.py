@@ -25,6 +25,7 @@ from src.db.store import (
 from src.extract import fetch_via_firecrawl, validate_extracted
 from src.safety.cost import CostBudget, CostGate
 from src.safety.trace import span
+from src.sources._http_base import KIND_FIRECRAWL, KIND_HTTP, fetch_via_http
 
 if TYPE_CHECKING:
     from src.sources._base import SourceAdapter
@@ -75,6 +76,42 @@ def _is_fresh(
     return True
 
 
+def _fetch_for_adapter(
+    adapter: SourceAdapter,
+    url: str,
+    adapter_kind: str,
+    gate: CostGate,
+    counts: dict[str, int],
+) -> dict[str, object] | None:
+    """Fetch raw payload dispatched by adapter kind; return None on handled error."""
+    if adapter_kind == KIND_FIRECRAWL:
+        gate.before_call(cost=5)  # may raise RuntimeError on circuit breaker
+        try:
+            return fetch_via_firecrawl(url, adapter.page_type)
+        except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
+            # Config errors are NOT transient — fail loud, not circuit breaker quota.
+            raise
+        except Exception:  # actual transport/transient errors feed circuit breaker
+            logger.exception("fetch failed for %s", url)
+            gate.after_error()
+            counts["errors"] += 1
+            return None
+    elif adapter_kind == KIND_HTTP:
+        gate.before_http_call()  # may raise RuntimeError on cap / breaker
+        try:
+            return fetch_via_http(adapter, url)  # type: ignore[arg-type]  # runtime dispatch via adapter_kind
+        except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
+            # Config errors are NOT transient — fail loud, not circuit breaker quota.
+            raise
+        except Exception:  # transport / transient errors feed circuit breaker
+            logger.exception("http fetch failed for %s", url)
+            gate.after_error()
+            counts["errors"] += 1
+            return None
+    else:
+        raise ValueError(f"unknown adapter kind: {adapter_kind!r}")
+
+
 def run(
     source: str,
     *,
@@ -123,17 +160,10 @@ def run(
 
                 if delay is not None:
                     time.sleep(delay)
-                with span("scrape", parent_id=root["span_id"], url=url) as s:
-                    gate.before_call(cost=5)  # may raise RuntimeError on circuit breaker
-                    try:
-                        raw = fetch_via_firecrawl(url, adapter.page_type)
-                    except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
-                        # Config errors are NOT transient — fail loud, not circuit breaker quota.
-                        raise
-                    except Exception:  # actual transport/transient errors feed circuit breaker
-                        logger.exception("fetch failed for %s", url)
-                        gate.after_error()
-                        counts["errors"] += 1
+                adapter_kind = getattr(adapter, "kind", KIND_FIRECRAWL)
+                with span("scrape", parent_id=root["span_id"], url=url, kind=adapter_kind) as s:
+                    raw = _fetch_for_adapter(adapter, url, adapter_kind, gate, counts)
+                    if raw is None:
                         continue
                     source_id = adapter.parse_id(url)
 
@@ -159,7 +189,10 @@ def run(
                         instance.model_dump(mode="json"),
                         raw_id,
                     )
-                    gate.after_success(cost=5)
+                    if adapter_kind == KIND_FIRECRAWL:
+                        gate.after_success(cost=5)
+                    else:
+                        gate.after_http_success()
                     counts["canonical"] += 1
                     con.commit()
     finally:
