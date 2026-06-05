@@ -24,3 +24,11 @@
   adapter: src/sources/anthropic_news.py
   api_available: false
   api_check_notes: "Community RSS scrapers exist (RSSHub, taobojlen/anthropic-rss-feed); no official news API endpoint."
+- domain: www.scrapethissite.com
+  added_by: landpage101-oss
+  reviewed_at: 2026-06-05
+  legal_basis: "Public scraping sandbox explicitly designed for web scraping practice; robots.txt Disallow /lessons/, /faq/ only; /pages/** fully allowed; no auth required; non-commercial educational use"
+  rate_limit_rps: 1.0
+  adapter: src/sources/scrapethissite_com.py
+  api_available: false
+  api_check_notes: "Purpose-built scraping sandbox, no API — scrape is the intended usage"
