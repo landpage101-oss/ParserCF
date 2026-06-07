@@ -32,3 +32,11 @@
   adapter: src/sources/scrapethissite_com.py
   api_available: false
   api_check_notes: "Purpose-built scraping sandbox, no API — scrape is the intended usage"
+- domain: dummyjson.com
+  added_by: landpage101-oss
+  reviewed_at: 2026-06-07
+  legal_basis: "Public testing sandbox REST API (per site self-description 'Free Fake REST API for Placeholder JSON Data'); robots.txt wildcard Allow / for our User-Agent (agent-parser/1.0 is not among the named-disallow AI bots ClaudeBot/GPTBot/Bytespider/Amazonbot/CCBot/Google-Extended/Applebot-Extended/meta-externalagent); Disallow /auth/ respected; Content-Signal ai-train=no respected (analytical catalog, not model training); fake/placeholder data, no proprietary content; open-source community project (github.com/Ovi/DummyJSON)"
+  rate_limit_rps: 1.0
+  adapter: src/sources/dummyjson_com.py
+  api_available: true
+  api_check_notes: "Adapter uses dummyjson.com public REST API directly via _http_base.py (HTTP-based, not Firecrawl). Endpoints: GET /products/{id} for canonical records; /products?limit=N&skip=N exists for future pagination expansion."
