@@ -118,6 +118,7 @@ def run(
     since: str | None = None,
     max_credits: int = 100,
     max_iterations: int = 200,
+    max_http_calls: int = 200,
     max_age_days: int = 7,
     force: bool = False,
     db_path: Path = DB_PATH,
@@ -129,7 +130,13 @@ def run(
         raise ValueError(f"source {source!r} not found in sources.yaml")
 
     adapter = _load_adapter(source)
-    gate = CostGate(CostBudget(max_credits_per_run=max_credits))
+    gate = CostGate(
+        CostBudget(
+            max_credits_per_run=max_credits,
+            max_iterations=max_iterations,
+            max_http_calls_per_run=max_http_calls,
+        )
+    )
     counts = {
         "canonical": 0,
         "validation_failed": 0,
@@ -215,6 +222,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-credits", type=int, default=100)
     parser.add_argument("--max-iterations", type=int, default=200)
     parser.add_argument(
+        "--max-http-calls",
+        type=int,
+        default=200,
+        help="Cap on HTTP fetches per run (parallel to --max-credits for HTTP-source adapters)",
+    )
+    parser.add_argument(
         "--max-age-days",
         type=int,
         default=7,
@@ -241,6 +254,7 @@ def main(argv: list[str] | None = None) -> int:
         since=args.since,
         max_credits=args.max_credits,
         max_iterations=args.max_iterations,
+        max_http_calls=args.max_http_calls,
         max_age_days=args.max_age_days,
         force=args.force,
     )
