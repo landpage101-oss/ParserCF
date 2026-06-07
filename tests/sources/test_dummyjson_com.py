@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from src.schemas.product import Product
 from src.sources._http_base import KIND_HTTP
 from src.sources.dummyjson_com import DummyjsonComAdapter
 
@@ -48,11 +49,29 @@ class TestDummyjsonComAdapter:
         assert result["in_stock"] is True
         assert result["description"] == "An excellent product."
 
-    def test_parse_response_price_is_decimal_from_str(self) -> None:
+    def test_parse_response_price_is_float_passthrough(self) -> None:
+        """Adapter returns JSON-primitive; Pydantic Product converts to Decimal at validate."""
         url = "https://dummyjson.com/products/1"
         response: dict[str, object] = {"title": "X", "price": 9.99, "stock": 1}
         result = self.adapter.parse_response(response, url)
-        assert result["price"] == Decimal("9.99")
+        assert result["price"] == 9.99
+        assert isinstance(result["price"], float)
+        assert not isinstance(result["price"], Decimal)
+
+    def test_parse_response_output_validates_as_product_with_decimal_price(self) -> None:
+        """Lock-in: adapter output passes Product.model_validate with clean Decimal."""
+        url = "https://dummyjson.com/products/1"
+        response: dict[str, object] = {
+            "title": "Test Product",
+            "description": "A real description longer than placeholder threshold.",
+            "price": 9.99,
+            "stock": 5,
+        }
+        result = self.adapter.parse_response(response, url)
+        product = Product.model_validate(result)
+        assert product.price == Decimal("9.99")  # Pydantic str-coerces float, no precision loss
+        assert product.name == "Test Product"
+        assert product.in_stock is True
 
     def test_parse_response_in_stock_from_stock_count(self) -> None:
         url = "https://dummyjson.com/products/1"

@@ -10,7 +10,6 @@ community project (github.com/Ovi/DummyJSON).
 from __future__ import annotations
 
 from collections.abc import Iterable
-from decimal import Decimal
 from typing import ClassVar
 
 from src.sources._http_base import KIND_HTTP
@@ -47,9 +46,11 @@ class DummyjsonComAdapter:
         # rely on field presence — schema validator + run.py defensive overrides
         # close the gaps.
         price_raw = response_json.get("price")
-        price: Decimal | None = (
-            Decimal(str(price_raw)) if isinstance(price_raw, (int, float)) else None
-        )
+        # Keep JSON-primitive: record_attempt audits raw_payload via json.dumps before
+        # Pydantic validation. Decimal would break that. Product schema validator
+        # converts float→Decimal cleanly (Pydantic v2 uses Decimal(str(value)) under
+        # the hood, preserving precision).
+        price: float | None = float(price_raw) if isinstance(price_raw, (int, float)) else None
 
         stock_raw = response_json.get("stock")
         in_stock = bool(isinstance(stock_raw, int) and stock_raw > 0)
