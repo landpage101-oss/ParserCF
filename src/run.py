@@ -82,6 +82,7 @@ def _fetch_for_adapter(
     adapter_kind: str,
     gate: CostGate,
     counts: dict[str, int],
+    rate_limit_rps: float,  # NEW — applied only on HTTP path
 ) -> dict[str, object] | None:
     """Fetch raw payload dispatched by adapter kind; return None on handled error."""
     if adapter_kind == KIND_FIRECRAWL:
@@ -99,7 +100,7 @@ def _fetch_for_adapter(
     elif adapter_kind == KIND_HTTP:
         gate.before_http_call()  # may raise RuntimeError on cap / breaker
         try:
-            return fetch_via_http(adapter, url)  # type: ignore[arg-type]  # runtime dispatch via adapter_kind
+            return fetch_via_http(adapter, url, rate_limit_rps)  # type: ignore[arg-type]  # runtime dispatch via adapter_kind
         except (KeyError, ImportError, AttributeError, ModuleNotFoundError):
             # Config errors are NOT transient — fail loud, not circuit breaker quota.
             raise
@@ -128,6 +129,8 @@ def run(
     config = next((c for c in configs if _config_name(c) == source), None)
     if config is None:
         raise ValueError(f"source {source!r} not found in sources.yaml")
+
+    rate_limit_rps = config.rate_limit_rps  # NEW
 
     adapter = _load_adapter(source)
     gate = CostGate(
@@ -166,10 +169,17 @@ def run(
                     continue
 
                 if delay is not None:
+                    # robots.txt crawl-delay (per-fetch, declared by source).
+                    # This composes with the per-source rate-limit applied inside
+                    # fetch_via_http (inter-fetch spacing from sources.yaml::rate_limit_rps):
+                    # robots-delay → rate-limit → urlopen. Both layers may fire; the effective
+                    # wait is the stricter of the two for any given pair of consecutive calls.
                     time.sleep(delay)
                 adapter_kind = getattr(adapter, "kind", KIND_FIRECRAWL)
                 with span("scrape", parent_id=root["span_id"], url=url, kind=adapter_kind) as s:
-                    raw = _fetch_for_adapter(adapter, url, adapter_kind, gate, counts)
+                    raw = _fetch_for_adapter(
+                        adapter, url, adapter_kind, gate, counts, rate_limit_rps
+                    )
                     if raw is None:
                         continue
                     source_id = adapter.parse_id(url)
