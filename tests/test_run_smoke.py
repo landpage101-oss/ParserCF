@@ -17,6 +17,7 @@ from src.run import run
 
 class _StubConfig:
     adapter = "src/sources/docs_python_org.py"
+    rate_limit_rps = 1.0  # NEW — required by run() since PR-A
 
 
 class _StubAdapter:

@@ -15,6 +15,7 @@ from src.sources._http_base import KIND_HTTP
 
 class _StubConfig:
     adapter = "src/sources/docs_python_org.py"
+    rate_limit_rps = 1.0  # NEW — required by run() since PR-A
 
 
 class _StubFirecrawlAdapter:
@@ -82,7 +83,7 @@ def test_run_dispatches_firecrawl_for_default_adapter(
     )
     monkeypatch.setattr(
         "src.run.fetch_via_http",
-        lambda _a, url: (http_calls.append(url), {})[1],
+        lambda _a, url, _rps: (http_calls.append(url), {})[1],
     )
     db = _setup(tmp_path, monkeypatch, _StubFirecrawlAdapter())
 
@@ -105,7 +106,7 @@ def test_run_dispatches_http_for_kind_http_adapter(
     )
     monkeypatch.setattr(
         "src.run.fetch_via_http",
-        lambda _a, url: (http_calls.append(url), dict(_VALID_DOCS_RAW))[1],
+        lambda _a, url, _rps: (http_calls.append(url), dict(_VALID_DOCS_RAW))[1],
     )
     db = _setup(tmp_path, monkeypatch, _StubHttpAdapter())
 
