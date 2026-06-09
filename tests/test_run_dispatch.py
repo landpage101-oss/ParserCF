@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import pytest
 
+    from src.safety.cost import CostGate
+
 from src.db.migrate import migrate
 from src.run import run
 from src.sources._http_base import KIND_HTTP
@@ -40,7 +42,13 @@ class _StubHttpAdapter:
     domain = "example.invalid"
     name = "docs_python_org"
 
-    def list_urls(self, since: str | None = None) -> list[str]:  # noqa: ARG002
+    def list_urls(
+        self,
+        since: str | None = None,  # noqa: ARG002
+        *,
+        gate: CostGate | None = None,  # noqa: ARG002
+        rate_limit_rps: float | None = None,  # noqa: ARG002
+    ) -> list[str]:
         return ["https://example.test/x"]
 
     def parse_id(self, url: str) -> str:

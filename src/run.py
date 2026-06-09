@@ -113,7 +113,7 @@ def _fetch_for_adapter(
         raise ValueError(f"unknown adapter kind: {adapter_kind!r}")
 
 
-def run(
+def run(  # noqa: C901, PLR0912
     source: str,
     *,
     since: str | None = None,
@@ -154,7 +154,12 @@ def run(
     try:
         with span("batch", source=source) as root:
             root_span_id = root["span_id"]
-            for i, url in enumerate(adapter.list_urls(since)):
+            adapter_kind = getattr(adapter, "kind", KIND_FIRECRAWL)
+            if adapter_kind == KIND_HTTP:
+                url_iter = adapter.list_urls(since, gate=gate, rate_limit_rps=rate_limit_rps)  # type: ignore[call-arg]
+            else:
+                url_iter = adapter.list_urls(since)
+            for i, url in enumerate(url_iter):
                 if i >= max_iterations:
                     break
                 iterated_count += 1
@@ -175,7 +180,6 @@ def run(
                     # robots-delay → rate-limit → urlopen. Both layers may fire; the effective
                     # wait is the stricter of the two for any given pair of consecutive calls.
                     time.sleep(delay)
-                adapter_kind = getattr(adapter, "kind", KIND_FIRECRAWL)
                 with span("scrape", parent_id=root["span_id"], url=url, kind=adapter_kind) as s:
                     raw = _fetch_for_adapter(
                         adapter, url, adapter_kind, gate, counts, rate_limit_rps

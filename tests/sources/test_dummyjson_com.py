@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest.mock import patch
+
+import pytest
 
 from src.schemas.product import Product
 from src.sources._http_base import KIND_HTTP
@@ -13,10 +16,46 @@ class TestDummyjsonComAdapter:
     def setup_method(self) -> None:
         self.adapter = DummyjsonComAdapter()
 
-    def test_list_urls_returns_10_product_seeds(self) -> None:
-        urls = list(self.adapter.list_urls())
-        assert len(urls) == 10
-        assert all(url.startswith("https://dummyjson.com/products/") for url in urls)
+    def test_list_urls_delegates_to_paginate_limit_skip(self) -> None:
+        mock_urls = ["https://dummyjson.com/products/1", "https://dummyjson.com/products/2"]
+        with patch(
+            "src.sources.dummyjson_com.paginate_limit_skip",
+            return_value=iter(mock_urls),
+        ) as mock_paginate:
+            urls = list(self.adapter.list_urls(rate_limit_rps=1.5))
+
+        mock_paginate.assert_called_once()
+        kwargs = mock_paginate.call_args.kwargs
+        assert kwargs["source_name"] == "dummyjson_com"
+        assert kwargs["items_key"] == "products"
+        assert kwargs["total_key"] == "total"
+        assert kwargs["rate_limit_rps"] == 1.5
+        assert kwargs["gate"] is None
+        assert urls == mock_urls
+
+    def test_list_urls_raises_when_rate_limit_rps_missing(self) -> None:
+        with pytest.raises(ValueError, match="rate_limit_rps"):
+            list(self.adapter.list_urls())
+
+    def test_list_urls_yields_paginated_urls_end_to_end(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "src.sources._http_base._http_get_json",
+            lambda _url, _src, _rps: {
+                "products": [{"id": 1}, {"id": 2}, {"id": 3}],
+                "total": 3,
+            },
+        )
+
+        urls = list(self.adapter.list_urls(rate_limit_rps=1.0))
+
+        assert urls == [
+            "https://dummyjson.com/products/1",
+            "https://dummyjson.com/products/2",
+            "https://dummyjson.com/products/3",
+        ]
 
     def test_parse_id_extracts_numeric_id(self) -> None:
         assert self.adapter.parse_id("https://dummyjson.com/products/5") == "5"
