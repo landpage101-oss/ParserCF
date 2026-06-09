@@ -12,7 +12,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.sources._http_base import KIND_HTTP, fetch_via_http
+from src.safety.cost import CostGate
+from src.sources._http_base import (
+    KIND_HTTP,
+    _http_get_json,
+    fetch_via_http,
+    paginate_limit_skip,
+)
 
 _ZW_SPACE = chr(0x200B)  # zero-width space; sanitize must strip this
 
@@ -244,3 +250,207 @@ def test_fetch_via_http_rate_limit_state_isolated_per_source_name(
         fetch_via_http(adapter_b, url, rate_limit_rps=1.0)
 
     assert sleep_calls == []
+
+
+# --- _http_get_json tests ---
+
+
+def test_http_get_json_returns_decoded_json() -> None:
+    url = "https://example.test/data.json"
+    body = json.dumps({"key": "value", "count": 42}).encode()
+    mock_resp = _make_mock_response(body)
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = _http_get_json(url, "example_test", rate_limit_rps=1.0)
+    assert result == {"key": "value", "count": 42}
+    assert isinstance(result, dict)
+
+
+def test_http_get_json_raises_value_error_on_non_object_json() -> None:
+    for non_obj_body in [b"[1, 2, 3]", b'"string"', b"42", b"null"]:
+        mock_resp = _make_mock_response(non_obj_body)
+        with (
+            patch("urllib.request.urlopen", return_value=mock_resp),
+            pytest.raises(ValueError, match="expected JSON object"),
+        ):
+            _http_get_json("https://example.test/x.json", "example_test", rate_limit_rps=1.0)
+
+
+# --- paginate_limit_skip tests ---
+
+
+def _make_page(items: list[dict[str, object]], total: int) -> dict[str, object]:
+    return {"products": items, "total": total}
+
+
+def _id_item(item: dict[str, object]) -> str:
+    return f"https://example.test/products/{item['id']}"
+
+
+def test_paginate_limit_skip_yields_all_items_across_pages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page_items_1 = [{"id": i} for i in range(1, 31)]
+    page_items_2 = [{"id": i} for i in range(31, 61)]
+    page_items_3 = [{"id": i} for i in range(61, 71)]
+    total = 70
+
+    pages: dict[str, dict[str, object]] = {
+        "https://example.test/products?limit=30&skip=0": _make_page(page_items_1, total),
+        "https://example.test/products?limit=30&skip=30": _make_page(page_items_2, total),
+        "https://example.test/products?limit=30&skip=60": _make_page(page_items_3, total),
+    }
+    monkeypatch.setattr(
+        "src.sources._http_base._http_get_json",
+        lambda url, _src, _rps: pages[url],
+    )
+
+    urls = list(
+        paginate_limit_skip(
+            "https://example.test/products?limit={limit}&skip={skip}",
+            _id_item,
+            source_name="example_test",
+            rate_limit_rps=1.0,
+            limit=30,
+        )
+    )
+
+    assert len(urls) == 70
+    assert urls[0] == "https://example.test/products/1"
+    assert urls[-1] == "https://example.test/products/70"
+
+
+def test_paginate_limit_skip_stops_when_total_reached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page_items = [{"id": i} for i in range(1, 11)]
+    call_count = 0
+
+    def mock_get_json(_url: str, _src: str, _rps: float) -> dict[str, object]:
+        nonlocal call_count
+        call_count += 1
+        return _make_page(page_items, 10)
+
+    monkeypatch.setattr("src.sources._http_base._http_get_json", mock_get_json)
+
+    urls = list(
+        paginate_limit_skip(
+            "https://example.test/products?limit={limit}&skip={skip}",
+            _id_item,
+            source_name="example_test",
+            rate_limit_rps=1.0,
+            limit=30,
+        )
+    )
+
+    assert len(urls) == 10
+    assert call_count == 1
+
+
+def test_paginate_limit_skip_stops_on_empty_items_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.sources._http_base._http_get_json",
+        lambda _url, _src, _rps: {"products": [], "total": 100},
+    )
+
+    urls = list(
+        paginate_limit_skip(
+            "https://example.test/products?limit={limit}&skip={skip}",
+            _id_item,
+            source_name="example_test",
+            rate_limit_rps=1.0,
+            limit=30,
+        )
+    )
+
+    assert urls == []
+
+
+def test_paginate_limit_skip_respects_max_pages_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.sources._http_base._http_get_json",
+        lambda _url, _src, _rps: {"products": [{"id": i} for i in range(30)], "total": 10000},
+    )
+
+    urls = list(
+        paginate_limit_skip(
+            "https://example.test/products?limit={limit}&skip={skip}",
+            _id_item,
+            source_name="example_test",
+            rate_limit_rps=1.0,
+            limit=30,
+            max_pages=2,
+        )
+    )
+
+    assert len(urls) == 60  # 2 pages x 30 items
+
+
+def test_paginate_limit_skip_calls_gate_before_and_after_each_listing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import MagicMock  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        "src.sources._http_base._http_get_json",
+        lambda _url, _src, _rps: _make_page([{"id": i} for i in range(1, 11)], 10),
+    )
+
+    gate = MagicMock(spec=CostGate)
+
+    list(
+        paginate_limit_skip(
+            "https://example.test/products?limit={limit}&skip={skip}",
+            _id_item,
+            source_name="example_test",
+            rate_limit_rps=1.0,
+            limit=30,
+            gate=gate,
+        )
+    )
+
+    gate.before_http_call.assert_called_once()
+    gate.after_http_success.assert_called_once()
+    gate.after_error.assert_not_called()
+
+
+def test_paginate_limit_skip_calls_gate_after_error_on_listing_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import io  # noqa: PLC0415
+    import urllib.error as _ue  # noqa: PLC0415
+    from unittest.mock import MagicMock  # noqa: PLC0415
+
+    exc = _ue.HTTPError(
+        "https://example.test/products?limit=30&skip=0",
+        503,
+        "Service Unavailable",
+        {},  # type: ignore[arg-type]
+        io.BytesIO(b""),
+    )
+
+    def raise_exc(_url: str, _src: str, _rps: float) -> dict[str, object]:
+        raise exc
+
+    monkeypatch.setattr("src.sources._http_base._http_get_json", raise_exc)
+
+    gate = MagicMock(spec=CostGate)
+
+    with pytest.raises(_ue.HTTPError):
+        list(
+            paginate_limit_skip(
+                "https://example.test/products?limit={limit}&skip={skip}",
+                _id_item,
+                source_name="example_test",
+                rate_limit_rps=1.0,
+                limit=30,
+                gate=gate,
+            )
+        )
+
+    gate.before_http_call.assert_called_once()
+    gate.after_error.assert_called_once()
+    gate.after_http_success.assert_not_called()

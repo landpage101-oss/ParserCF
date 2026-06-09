@@ -10,18 +10,28 @@ community project (github.com/Ovi/DummyJSON).
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from src.sources._http_base import KIND_HTTP
+from src.sources._http_base import KIND_HTTP, paginate_limit_skip
+
+if TYPE_CHECKING:
+    from src.safety.cost import CostGate
 
 _BASE = "https://dummyjson.com/products/"
-
-_SEEDS: tuple[str, ...] = tuple(f"{_BASE}{i}" for i in range(1, 11))
+_LISTING_URL_TEMPLATE = "https://dummyjson.com/products?limit={limit}&skip={skip}"
+_PAGE_LIMIT = 30  # dummyjson default; max 100 but 30 is a balanced page size
 
 # dummyjson does not return currency in responses. The sandbox uses USD by
 # convention (prices in US dollar amounts, no currency symbol). Hardcoded
 # default — if dummyjson ever starts returning a currency field, prefer it.
 _DEFAULT_CURRENCY = "USD"
+
+
+def _item_to_detail_url(item: dict[str, object]) -> str:
+    item_id = item.get("id")
+    if not isinstance(item_id, int):
+        raise ValueError(f"dummyjson item missing integer 'id': {item!r}")  # noqa: TRY004
+    return f"{_BASE}{item_id}"
 
 
 class DummyjsonComAdapter:
@@ -30,8 +40,28 @@ class DummyjsonComAdapter:
     name = "dummyjson_com"
     page_type = "product"
 
-    def list_urls(self, since: str | None = None) -> Iterable[str]:  # noqa: ARG002
-        return list(_SEEDS)
+    def list_urls(
+        self,
+        since: str | None = None,  # noqa: ARG002
+        *,
+        gate: CostGate | None = None,
+        rate_limit_rps: float | None = None,
+    ) -> Iterable[str]:
+        if rate_limit_rps is None:
+            raise ValueError(
+                "dummyjson_com.list_urls requires rate_limit_rps; "
+                "production callers must pass config.rate_limit_rps from sources.yaml"
+            )
+        yield from paginate_limit_skip(
+            listing_url_template=_LISTING_URL_TEMPLATE,
+            item_to_detail_url=_item_to_detail_url,
+            source_name=self.name,
+            rate_limit_rps=rate_limit_rps,
+            items_key="products",
+            total_key="total",
+            limit=_PAGE_LIMIT,
+            gate=gate,
+        )
 
     def parse_id(self, url: str) -> str:
         # /products/5 -> "5"; trailing-slash and query-string tolerant
